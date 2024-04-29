@@ -20,13 +20,9 @@ Use the <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/notebook.ip
 
 ### Download AntiFold
 ```bash
-# Download code
-mkdir -p antifold_code && cd antifold_code
-wget https://opig.stats.ox.ac.uk/data/downloads/AntiFold/antifold_code.zip
-unzip antifold_code.zip
-
-# Download model
-mkdir -p models
+# Download code and model
+git clone https://github.com/oxpig/AntiFold
+cd AntiFold
 wget -P models/ https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt
 ```
 
