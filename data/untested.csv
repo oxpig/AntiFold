@@ -1,0 +1,8 @@
+# Use AntiFold or ESM-IF1 with any number of chains using the --custom_chain_mode flag
+# Input single chain for single-chain mode. For multiple chains, PDB chain order should be used.
+# Nb: If using AntiFold model weights or sampling code (--num_seq_per_target >= 1), chain order must be Hchain, Lchain, other chains
+pdb,chain1,chain2,chain3
+3hfm,H,L,Y
+3hfm,H,,
+3hfm,,L,
+3hfm,,,Y

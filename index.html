@@ -1,0 +1,474 @@
+
+      <html>
+        <head>
+          <title></title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta charset="UTF-8">
+        </head>
+        <body>
+          <div id='content'>
+      <h1 id="antifold">AntiFold</h1>
+<p>Code for AntiFold paper, accepted for <a href="https://openreview.net/forum?id=bxZMKHtlL6">NeurIPS 2023 GenBio spotlight</a></p>
+<p>Webserver: <a href="https://opig.stats.ox.ac.uk/webapps/AntiFold/">OPIG webserver</a></p>
+<p>Code: <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/antifold_code.zip">antifold_code.zip</a></p>
+<p>Model: <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt">model.pt</a></p>
+<p>License: <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/LICENSE">BSD 3-Clause</a></p>
+<h1 id="colab">Colab</h1>
+<p>To test the method out without installing it you can try this: <a href="https://colab.research.google.com/drive/1TTfgjoZx3mzF5u4e9b4Un9Y7b_rqXc_4"><img src="images/colab-badge.svg" alt="Open In Colab" /></a></p>
+<h2 id="install-and-run-antifold">Install and run AntiFold</h2>
+<p>Use the <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/notebook.ipynb">Jupyter notebook</a> or follow this guide with example PDBs:</p>
+<h3 id="download-antifold">Download AntiFold</h3>
+<pre><code class="hljs bash language-bash"><span class="hljs-comment"># Download code</span>
+<span class="hljs-built_in">mkdir</span> -p antifold_code &amp;&amp; <span class="hljs-built_in">cd</span> antifold_code
+wget https://opig.stats.ox.ac.uk/data/downloads/AntiFold/antifold_code.zip
+unzip antifold_code.zip
+
+<span class="hljs-comment"># Download model</span>
+<span class="hljs-built_in">mkdir</span> -p models
+wget -P models/ https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt
+</code></pre>
+<h3 id="install-antifold-cpu">Install AntiFold (CPU)</h3>
+<pre><code class="hljs bash language-bash">conda create --name antifold python=3.10 -y
+conda activate antifold
+conda install -c pytorch pytorch
+conda install -c pyg pyg -y
+conda install -c conda-forge pip -y
+<span class="hljs-comment"># Install AntiFold from antifold_code directory</span>
+pip install .
+pip install torch-geometric==2.4.0
+</code></pre>
+<h3 id="install-antifold-gpu">Install AntiFold (GPU)</h3>
+<pre><code class="hljs bash language-bash">conda create --name antifold python=3.10 -y
+conda activate antifold
+conda install -c conda-forge pytorch-gpu
+conda install -c pyg pyg -y
+conda install -c conda-forge pip -y
+<span class="hljs-comment"># Install AntiFold from antifold_code directory</span>
+pip install .
+pip install torch-geometric==2.4.0
+</code></pre>
+<h3 id="run-antifold-residue-probabilities-embeddings-sampled-sequences">Run AntiFold (residue probabilities, embeddings, sampled sequences)</h3>
+<pre><code class="hljs bash language-bash"><span class="hljs-comment"># Residue probabilities, sample 10 sequences in CDRH3 from single PDB</span>
+python antifold/main.py \
+    --out_dir output/single_pdb \
+    --pdb_file data/pdbs/6y1l_imgt.pdb \
+    --heavy_chain H \
+    --light_chain L \
+    --num_seq_per_target 10 \
+    --sampling_temp <span class="hljs-string">&quot;0.2&quot;</span> \
+    --regions <span class="hljs-string">&quot;CDRH3&quot;</span>
+
+<span class="hljs-comment"># Residue probabilities, sample 10 sequences at temperatures 0.20 &amp; 0.30 in CDRs 1-3 from folder of PDBs</span>
+python antifold/main.py \
+    --out_dir output/example_pdbs \
+    --pdbs_csv data/example_pdbs.csv \
+    --pdb_dir data/pdbs \
+    --num_seq_per_target 10 \
+    --sampling_temp <span class="hljs-string">&quot;0.20 0.30&quot;</span> \
+    --regions <span class="hljs-string">&quot;CDR1 CDR2 CDR3&quot;</span>
+
+<span class="hljs-comment"># Extract ESM-IF1 embeddings from PDBs in folder, from all chains listed in untested.csv (not limited to VH/VL)</span>
+python antifold/main.py \
+    --out_dir output/untested/ \
+    --pdbs_csv data/untested.csv \
+    --pdb_dir data/untested/ \
+    --use_esm_if1_weights \
+    --custom_chain_mode \
+    --extract_embeddings
+</code></pre>
+<h2 id="input-parameters">Input parameters</h2>
+<p>Required parameters:</p>
+<pre><code class="hljs text language-text">- Option 1: PDB file (--pdb_file) + specified heavy and light chain (--heavy_chain and --light_chain)
+- Option 2: PDB folder (--pdb_dir) + CSV file specifying chains (--pdbs_csv)
+- Output directory (--out_dir) for output inverse folding probabilities CSV and optional generated sequences FASTA
+</code></pre>
+<p>Parameters for generating new sequences:</p>
+<pre><code class="hljs text language-text">- Number of sequences to generate (--num_seq_per_target)
+- Region to mutate (--region) based on inverse folding probabilities. Select from list in IMGT_dict (e.g. &#x27;CDRH1 CDRH2 CDRH3&#x27;)
+- Sampling temperature (--sampling_temp) controls generated sequence diversity, by scaling the inverse folding probabilities before sampling. Temperature = 1 means no change, while temperature ~ 0 only samples the most likely amino-acid at each position (acts as argmax).
+</code></pre>
+<p>Optional parameters:</p>
+<pre><code class="hljs text language-text">- Multi-chain mode for including antigen or other chains (--custom_chain_mode) - Nb, experimental (see example above)
+- Extract latent representations of PDB within model (--extract_embeddings)
+- Use ESM-IF1 instead of AntiFold model weights (--model_path &quot;ESM-IF1&quot;)
+</code></pre>
+<h2 id="example-output">Example output</h2>
+<p>Output CSV with residue log-probabilities: Residue probabilities: <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/output/example_pdbs/6y1l_imgt.csv">6y1l_imgt.csv</a></p>
+<ul>
+<li>pdb_pos - PDB residue number</li>
+<li>pdb_chain - PDB chain</li>
+<li>aa_orig - PDB residue (e.g. 112)</li>
+<li>aa_pred - Top predicted residue by AntiFold (argmax) for this position</li>
+<li>pdb_posins - PDB residue number with insertion code (e.g. 112A)</li>
+<li>perplexity - Inverse folding tolerance (higher is more tolerant) to mutations. See paper for more details.</li>
+<li>Amino-acids - Inverse folding scores (log-likelihood) for the given position</li>
+</ul>
+<pre><code class="hljs csv language-csv">pdb_pos,pdb_chain,aa_orig,aa_pred,pdb_posins,perplexity,A,C,D,E,F,G,H,I,K,L,M,N,P,Q,R,S,T,V,W,Y
+2,H,V,M,2,1.6488,<span class="hljs-string">-4</span>.9963,<span class="hljs-string">-6</span>.6117,<span class="hljs-string">-6</span>.3181,<span class="hljs-string">-6</span>.3243,<span class="hljs-string">-6</span>.7570,<span class="hljs-string">-4</span>.2518,<span class="hljs-string">-6</span>.7514,<span class="hljs-string">-5</span>.2540,<span class="hljs-string">-6</span>.8067,<span class="hljs-string">-5</span>.8619,<span class="hljs-string">-0</span>.0904,<span class="hljs-string">-6</span>.5493,<span class="hljs-string">-4</span>.8639,<span class="hljs-string">-6</span>.6316,<span class="hljs-string">-6</span>.3084,<span class="hljs-string">-5</span>.1900,<span class="hljs-string">-5</span>.0988,<span class="hljs-string">-3</span>.7295,<span class="hljs-string">-8</span>.0480,<span class="hljs-string">-7</span>.3236
+3,H,Q,Q,3,1.3889,<span class="hljs-string">-10</span>.5258,<span class="hljs-string">-12</span>.8463,<span class="hljs-string">-8</span>.4800,<span class="hljs-string">-4</span>.7630,<span class="hljs-string">-12</span>.9094,<span class="hljs-string">-11</span>.0924,<span class="hljs-string">-5</span>.6136,<span class="hljs-string">-10</span>.9870,<span class="hljs-string">-3</span>.1119,<span class="hljs-string">-8</span>.1113,<span class="hljs-string">-9</span>.4382,<span class="hljs-string">-6</span>.2246,<span class="hljs-string">-13</span>.3660,<span class="hljs-string">-0</span>.0701,<span class="hljs-string">-4</span>.9957,<span class="hljs-string">-10</span>.0301,<span class="hljs-string">-6</span>.8618,<span class="hljs-string">-7</span>.5810,<span class="hljs-string">-13</span>.6721,<span class="hljs-string">-11</span>.4157
+4,H,L,L,4,1.0021,<span class="hljs-string">-13</span>.3581,<span class="hljs-string">-12</span>.6206,<span class="hljs-string">-17</span>.5484,<span class="hljs-string">-12</span>.4801,<span class="hljs-string">-9</span>.8792,<span class="hljs-string">-13</span>.6382,<span class="hljs-string">-14</span>.8609,<span class="hljs-string">-13</span>.9344,<span class="hljs-string">-16</span>.4080,<span class="hljs-string">-0</span>.0002,<span class="hljs-string">-9</span>.2727,<span class="hljs-string">-16</span>.6532,<span class="hljs-string">-14</span>.0476,<span class="hljs-string">-12</span>.5943,<span class="hljs-string">-15</span>.4559,<span class="hljs-string">-16</span>.9103,<span class="hljs-string">-17</span>.0809,<span class="hljs-string">-10</span>.5670,<span class="hljs-string">-13</span>.5334,<span class="hljs-string">-13</span>.4324
+...
+</code></pre>
+<p>Output FASTA file with sampled sequences: <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/output/example_pdbs/6y1l_imgt.fasta">6y1l_imgt.fasta</a></p>
+<ul>
+<li>T: Temperature used for design</li>
+<li>score: average log-odds of residues in the sampled region</li>
+<li>global_score: average log-odds of all residues (IMGT positions 1-128)</li>
+<li>regions: regions selected for design</li>
+<li>seq_recovery: # mutations / total sequence length</li>
+<li>mutations: # mutations from original PDB sequence</li>
+</ul>
+<pre><code class="hljs fasta language-fasta">&gt;6y1l_imgt , <span class="hljs-attribute">score</span>=0.2934, <span class="hljs-attribute">global_score</span>=0.2934, regions=[<span class="hljs-string">&#x27;CDR1&#x27;</span>, <span class="hljs-string">&#x27;CDR2&#x27;</span>, <span class="hljs-string">&#x27;CDRH3&#x27;</span>], <span class="hljs-attribute">model_name</span>=AntiFold, <span class="hljs-attribute">seed</span>=42
+VQLQESGPGLVKPSETLSLTCAVSGYSISSGYYWGWIRQPPGKGLEWIGSIYHSGSTYYN
+PSLKSRVTISVDTSKNQFSLKLSSVTAADTAVYYCAGLTQSSHNDANWGQGTLVTVSS/V
+LTQPPSVSAAPGQKVTISCSGSSSNIGNNYVSWYQQLPGTAPKRLIYDNNKRPSGIPDRF
+SGSKSGTSATLGITGLQTGDEADYYCGTWDSSLNPVFGGGTKLEIKR
+&gt; <span class="hljs-attribute">T</span>=0.20, <span class="hljs-attribute">sample</span>=1, <span class="hljs-attribute">score</span>=0.3930, <span class="hljs-attribute">global_score</span>=0.1869, <span class="hljs-attribute">seq_recovery</span>=0.8983, <span class="hljs-attribute">mutations</span>=12
+VQLQESGPGLVKPSETLSLTCAVSGASITSSYYWGWIRQPPGKGLEWIGSIYYSGSTYYN
+PSLKSRVTISVDTSKNQFSLKLSSVTAADTAVYYCAGLYGSPWSNPYWGQGTLVTVSS/V
+LTQPPSVSAAPGQKVTISCSGSSSNIGNNYVSWYQQLPGTAPKRLIYDNNKRPSGIPDRF
+SGSKSGTSATLGITGLQTGDEADYYCGTWDSSLNPVFGGGTKLEIKR
+<span class="hljs-built_in">..</span>.
+</code></pre>
+<h2 id="example-notebook">Example notebook</h2>
+<p>Notebook: <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/notebook.ipynb">notebook.ipynb</a></p>
+<pre><code class="hljs python language-python"><span class="hljs-keyword">import</span> pandas <span class="hljs-keyword">as</span> pd
+
+<span class="hljs-comment"># Put IMGT numbered PDBs (Fv only, IMGT position 1-128) to process and load a CSV file with PDB names and heavy/light chains</span>
+<span class="hljs-comment"># Define the PDB and chains in DataFrame</span>
+pdb_dir = <span class="hljs-string">&quot;data/pdbs&quot;</span>
+df_pdbs = pd.read_csv(<span class="hljs-string">&quot;data/example_pdbs.csv&quot;</span>)
+
+<span class="hljs-comment"># Regions to mutate (IMGT)</span>
+regions_to_mutate = [<span class="hljs-string">&quot;CDR1&quot;</span>, <span class="hljs-string">&quot;CDR2&quot;</span>, <span class="hljs-string">&quot;CDR3H&quot;</span>]
+
+<span class="hljs-comment"># Load model</span>
+<span class="hljs-keyword">import</span> antifold.main <span class="hljs-keyword">as</span> antifold
+model = antifold.load_IF1_model(<span class="hljs-string">&quot;models/model.pt&quot;</span>)
+
+<span class="hljs-comment"># Sample from PDBs, 10 sequences each at temperature 0.50 in regions CDR1, CDR2, CDR3H</span>
+pdb_output_dict = antifold.sample_pdbs(
+                    model,
+                    pdbs_csv_or_dataframe=df_pdbs, <span class="hljs-comment"># Path to CSV file, or a DataFrame</span>
+                    regions_to_mutate=regions_to_mutate,
+                    pdb_dir=<span class="hljs-string">&quot;data/pdbs&quot;</span>,
+                    sample_n=<span class="hljs-number">10</span>,
+                    sampling_temp=<span class="hljs-number">0.50</span>,
+                    limit_expected_variation=<span class="hljs-literal">False</span>
+                    )
+
+<span class="hljs-comment"># Output dictionary with sequences, and residue probabilities or log-odds</span>
+pdbs = pdb_output_dict.keys()
+
+<span class="hljs-comment"># Residue log probabilities</span>
+df_logprobs = pdb_output_dict[<span class="hljs-string">&quot;6y1l_imgt&quot;</span>][<span class="hljs-string">&quot;logprobs&quot;</span>]
+
+<span class="hljs-comment"># Sampled sequences</span>
+fasta_dict = pdb_output_dict[<span class="hljs-string">&quot;6y1l_imgt&quot;</span>][<span class="hljs-string">&quot;sequences&quot;</span>]
+</code></pre>
+<h2 id="usage">Usage</h2>
+<pre><code class="hljs bash language-bash">usage: 
+    <span class="hljs-comment"># Predict on example PDBs in folder</span>
+    python antifold/main.py     --pdbs_csv data/example_pdbs.csv     --pdb_dir data/pdbs     --out_dir output/
+
+Predict inverse folding probabilities <span class="hljs-keyword">for</span> antibody variable domain, and sample sequences with maintained <span class="hljs-built_in">fold</span>.
+PDB structures should be IMGT-numbered, paired heavy and light chain variable domains (positions 1-128).
+
+For IMGT numbering PDBs use SAbDab or https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabpred/anarci/
+
+options:
+  -h, --<span class="hljs-built_in">help</span>            show this <span class="hljs-built_in">help</span> message and <span class="hljs-built_in">exit</span>
+  --pdb_file PDB_FILE   Input PDB file (<span class="hljs-keyword">for</span> single PDB predictions)
+  --heavy_chain HEAVY_CHAIN
+                        Ab heavy chain (<span class="hljs-keyword">for</span> single PDB predictions)
+  --light_chain LIGHT_CHAIN
+                        Ab light chain (<span class="hljs-keyword">for</span> single PDB predictions)
+  --antigen_chain ANTIGEN_CHAIN
+                        Antigen chain (experimental)
+  --pdbs_csv PDBS_CSV   Input CSV file with PDB names and H/L chains (multi-PDB predictions)
+  --pdb_dir PDB_DIR     Directory with input PDB files (multi-PDB predictions)
+  --out_dir OUT_DIR     Output directory
+  --regions REGIONS     Space-separated regions to mutate. Default <span class="hljs-string">&#x27;CDR1 CDR2 CDR3H&#x27;</span>
+  --num_seq_per_target NUM_SEQ_PER_TARGET
+                        Number of sequences to sample from each antibody PDB (default 0)
+  --sampling_temp SAMPLING_TEMP
+                        A string of temperatures e.g. <span class="hljs-string">&#x27;0.20 0.25 0.50&#x27;</span> (default 0.20). Sampling temperature <span class="hljs-keyword">for</span> amino acids. Suggested values 0.10, 0.15, 0.20, 0.25, 0.30. Higher values will lead to more diversity.
+  --limit_variation     Limit variation to as many mutations as expected from temperature sampling
+  --extract_embeddings  Extract per-residue embeddings from AntiFold / ESM-IF1
+  --custom_chain_mode   Custom chain input (experimental, e.g. single chain, inclusion of antigen chain or any chains with ESM-IF1)
+  --exclude_heavy       Exclude heavy chain from sampling
+  --exclude_light       Exclude light chain from sampling
+  --batch_size BATCH_SIZE
+                        Batch-size to use
+  --num_threads NUM_THREADS
+                        Number of CPU threads to use <span class="hljs-keyword">for</span> parallel processing (0 = all available)
+  --seed SEED           Seed <span class="hljs-keyword">for</span> reproducibility
+  --model_path MODEL_PATH
+                        AntiFold model weights. See --use_esm_if1_weights flag to use ESM-IF1 weights instead of AntiFold
+  --use_esm_if1_weights
+                        Use ESM-IF1 weights instead of AntiFold
+  --verbose VERBOSE     Verbose printing
+</code></pre>
+<h2 id="imgt-regions-dict">IMGT regions dict</h2>
+<p>Used to specify which regions to mutate in an IMGT numbered PDB</p>
+<ul>
+<li>IMGT numbered PDBs: <a href="https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab">https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab</a></li>
+<li>Renumber existing PDBs with ANARCI: <a href="https://github.com/oxpig/ANARCI">https://github.com/oxpig/ANARCI</a></li>
+<li>Read more: <a href="https://www.imgt.org/IMGTScientificChart/Numbering/IMGTIGVLsuperfamily.html">https://www.imgt.org/IMGTScientificChart/Numbering/IMGTIGVLsuperfamily.html</a></li>
+</ul>
+<pre><code class="hljs python language-python">IMGT_dict = {
+    <span class="hljs-string">&quot;all&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">128</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;allH&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">128</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;allL&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">128</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;FWH&quot;</span>: <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">26</span> + <span class="hljs-number">1</span>)) + <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">40</span>, <span class="hljs-number">55</span> + <span class="hljs-number">1</span>)) + <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">66</span>, <span class="hljs-number">104</span> + <span class="hljs-number">1</span>)),
+    <span class="hljs-string">&quot;FWL&quot;</span>: <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">26</span> + <span class="hljs-number">1</span>)) + <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">40</span>, <span class="hljs-number">55</span> + <span class="hljs-number">1</span>)) + <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">66</span>, <span class="hljs-number">104</span> + <span class="hljs-number">1</span>)),
+    <span class="hljs-string">&quot;CDRH&quot;</span>: <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">27</span>, <span class="hljs-number">39</span>)) + <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">56</span>, <span class="hljs-number">65</span> + <span class="hljs-number">1</span>)) + <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">105</span>, <span class="hljs-number">117</span> + <span class="hljs-number">1</span>)),
+    <span class="hljs-string">&quot;CDRL&quot;</span>: <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">27</span>, <span class="hljs-number">39</span>)) + <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">56</span>, <span class="hljs-number">65</span> + <span class="hljs-number">1</span>)) + <span class="hljs-built_in">list</span>(<span class="hljs-built_in">range</span>(<span class="hljs-number">105</span>, <span class="hljs-number">117</span> + <span class="hljs-number">1</span>)),
+    <span class="hljs-string">&quot;FW1&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">26</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;FWH1&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">26</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;FWL1&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, <span class="hljs-number">26</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;CDR1&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">27</span>, <span class="hljs-number">39</span>),
+    <span class="hljs-string">&quot;CDRH1&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">27</span>, <span class="hljs-number">39</span>),
+    <span class="hljs-string">&quot;CDRL1&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">27</span>, <span class="hljs-number">39</span>),
+    <span class="hljs-string">&quot;FW2&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">40</span>, <span class="hljs-number">55</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;FWH2&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">40</span>, <span class="hljs-number">55</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;FWL2&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">40</span>, <span class="hljs-number">55</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;CDR2&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">56</span>, <span class="hljs-number">65</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;CDRH2&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">56</span>, <span class="hljs-number">65</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;CDRL2&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">56</span>, <span class="hljs-number">65</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;FW3&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">66</span>, <span class="hljs-number">104</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;FWH3&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">66</span>, <span class="hljs-number">104</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;FWL3&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">66</span>, <span class="hljs-number">104</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;CDR3&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">105</span>, <span class="hljs-number">117</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;CDRH3&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">105</span>, <span class="hljs-number">117</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;CDRL3&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">105</span>, <span class="hljs-number">117</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;FW4&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">118</span>, <span class="hljs-number">128</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;FWH4&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">118</span>, <span class="hljs-number">128</span> + <span class="hljs-number">1</span>),
+    <span class="hljs-string">&quot;FWL4&quot;</span>: <span class="hljs-built_in">range</span>(<span class="hljs-number">118</span>, <span class="hljs-number">128</span> + <span class="hljs-number">1</span>),
+}
+</code></pre>
+
+          </div>
+          <style type='text/css'>body {
+    font: 400 16px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #111;
+    background-color: #fbfbfb;
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-feature-settings: "kern" 1;
+    -moz-font-feature-settings: "kern" 1;
+    -o-font-feature-settings: "kern" 1;
+    font-feature-settings: "kern" 1;
+    font-kerning: normal;
+    padding: 30px;
+}
+
+@media only screen and (max-width: 600px) {
+    body {
+        padding: 5px;
+    }
+    body>#content {
+        padding: 0px 20px 20px 20px !important;
+    }
+}
+
+body>#content {
+    margin: 0px;
+    max-width: 900px;
+    border: 1px solid #e1e4e8;
+    padding: 10px 40px;
+    padding-bottom: 20px;
+    border-radius: 2px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+summary {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+hr {
+    color: #bbb;
+    background-color: #bbb;
+    height: 1px;
+    flex: 0 1 auto;
+    margin: 1em 0;
+    padding: 0;
+    border: none;
+}
+
+.hljs-operator {
+    color: #868686;
+    /* There is a bug where the syntax highlighter would pick no color for e.g. `&&` symbols in the code samples. Let's overwrite this */
+}
+
+
+/**
+ * Links
+ */
+
+a {
+    color: #0366d6;
+    text-decoration: none;
+}
+
+a:visited {
+    color: #0366d6;
+}
+
+a:hover {
+    color: #0366d6;
+    text-decoration: underline;
+}
+
+pre {
+    background-color: #f6f8fa;
+    border-radius: 3px;
+    font-size: 85%;
+    line-height: 1.45;
+    overflow: auto;
+    padding: 16px;
+}
+
+
+/**
+  * Code blocks
+  */
+
+code {
+    background-color: rgba(27, 31, 35, .05);
+    border-radius: 3px;
+    font-size: 85%;
+    margin: 0;
+    word-wrap: break-word;
+    padding: .2em .4em;
+    font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, Courier, monospace;
+}
+
+pre>code {
+    background-color: transparent;
+    border: 0;
+    display: inline;
+    line-height: inherit;
+    margin: 0;
+    overflow: visible;
+    padding: 0;
+    word-wrap: normal;
+    font-size: 100%;
+}
+
+
+/**
+ * Blockquotes
+ */
+
+blockquote {
+    margin-left: 30px;
+    margin-top: 0px;
+    margin-bottom: 16px;
+    border-left-width: 3px;
+    padding: 0 1em;
+    color: #828282;
+    border-left: 4px solid #e8e8e8;
+    padding-left: 15px;
+    font-size: 18px;
+    letter-spacing: -1px;
+    font-style: italic;
+}
+
+blockquote * {
+    font-style: normal !important;
+    letter-spacing: 0;
+    color: #6a737d !important;
+}
+
+
+/**
+ * Tables
+ */
+
+table {
+    border-spacing: 2px;
+    display: block;
+    font-size: 14px;
+    overflow: auto;
+    width: 100%;
+    margin-bottom: 16px;
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+td {
+    padding: 6px 13px;
+    border: 1px solid #dfe2e5;
+}
+
+th {
+    font-weight: 600;
+    padding: 6px 13px;
+    border: 1px solid #dfe2e5;
+}
+
+tr {
+    background-color: #fff;
+    border-top: 1px solid #c6cbd1;
+}
+
+table tr:nth-child(2n) {
+    background-color: #f6f8fa;
+}
+
+
+/**
+ * Others
+ */
+
+img {
+    max-width: 100%;
+}
+
+p {
+    line-height: 24px;
+    font-weight: 400;
+    font-size: 16px;
+    color: #24292e;
+}
+
+ul {
+    margin-top: 0;
+}
+
+li {
+    color: #24292e;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+li+li {
+    margin-top: 0.25em;
+}
+
+* {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    color: #24292e;
+}
+
+a:visited {
+    color: #0366d6;
+}
+
+h1,
+h2,
+h3 {
+    border-bottom: 1px solid #eaecef;
+    color: #111;
+    /* Darker */
+}
+
+code>* {
+    font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace !important;
+}</style>
+          <style type='text/css'>pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#abb2bf;background:#282c34}.hljs-comment,.hljs-quote{color:#5c6370;font-style:italic}.hljs-doctag,.hljs-formula,.hljs-keyword{color:#c678dd}.hljs-deletion,.hljs-name,.hljs-section,.hljs-selector-tag,.hljs-subst{color:#e06c75}.hljs-literal{color:#56b6c2}.hljs-addition,.hljs-attribute,.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#98c379}.hljs-attr,.hljs-number,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-pseudo,.hljs-template-variable,.hljs-type,.hljs-variable{color:#d19a66}.hljs-bullet,.hljs-link,.hljs-meta,.hljs-selector-id,.hljs-symbol,.hljs-title{color:#61aeee}.hljs-built_in,.hljs-class .hljs-title,.hljs-title.class_{color:#e6c07b}.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}.hljs-link{text-decoration:underline}</style>
+        </body>
+      </html>

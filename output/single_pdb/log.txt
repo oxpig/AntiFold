@@ -1,0 +1,31 @@
+[2023-10-28 17:13:16,839] Sampling PDBs with Antifold ...
+[2023-10-28 17:13:16,840] Will sample 20 sequences from 1 PDBs at temperature(s) [0.2] and regions: ['CDRH3']
+[2023-10-28 17:13:17,771] Loading checkpoint from models/model.pt...
+[2023-10-28 17:13:18,177] Loaded model to cpu.
+[2023-10-28 17:13:18,177] Saving prediction CSVs to output/single_pdb
+[2023-10-28 17:13:18,178] Reading in (1) PDBs from DataFrame
+[2023-10-28 17:13:18,248] Predicting batch 1/1: PDBs 1-1 out of 1 total
+[2023-10-28 17:13:19,740] Saving 1 log-prob CSVs to output/single_pdb
+[2023-10-28 17:13:19,742] Writing 6y1l_imgt log_probs CSV to output/single_pdb/6y1l_imgt.csv
+[2023-10-28 17:13:19,755] 6y1l_imgt: , score=0.2934, global_score=0.2934, regions=['CDRH3'], model_name=AntiFold, seed=42
+[2023-10-28 17:13:19,761] 6y1l_imgt__1: T=0.20, sample=1, score=0.6989, global_score=0.2144, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,766] 6y1l_imgt__2: T=0.20, sample=2, score=0.7250, global_score=0.2169, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,771] 6y1l_imgt__3: T=0.20, sample=3, score=0.6755, global_score=0.2121, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,776] 6y1l_imgt__4: T=0.20, sample=4, score=0.7096, global_score=0.2154, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,781] 6y1l_imgt__5: T=0.20, sample=5, score=0.6879, global_score=0.2133, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,786] 6y1l_imgt__6: T=0.20, sample=6, score=0.7446, global_score=0.2188, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,791] 6y1l_imgt__7: T=0.20, sample=7, score=0.6861, global_score=0.2131, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,796] 6y1l_imgt__8: T=0.20, sample=8, score=0.7057, global_score=0.2151, seq_recovery=0.9322, mutations=8
+[2023-10-28 17:13:19,801] 6y1l_imgt__9: T=0.20, sample=9, score=0.6908, global_score=0.2136, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,806] 6y1l_imgt__10: T=0.20, sample=10, score=0.6987, global_score=0.2144, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,811] 6y1l_imgt__11: T=0.20, sample=11, score=0.6933, global_score=0.2138, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,816] 6y1l_imgt__12: T=0.20, sample=12, score=0.6989, global_score=0.2144, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,821] 6y1l_imgt__13: T=0.20, sample=13, score=0.6955, global_score=0.2141, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,826] 6y1l_imgt__14: T=0.20, sample=14, score=0.6940, global_score=0.2139, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,831] 6y1l_imgt__15: T=0.20, sample=15, score=0.6917, global_score=0.2137, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,835] 6y1l_imgt__16: T=0.20, sample=16, score=0.6785, global_score=0.2124, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,840] 6y1l_imgt__17: T=0.20, sample=17, score=0.6755, global_score=0.2121, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,845] 6y1l_imgt__18: T=0.20, sample=18, score=0.6755, global_score=0.2121, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,850] 6y1l_imgt__19: T=0.20, sample=19, score=0.6987, global_score=0.2144, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,855] 6y1l_imgt__20: T=0.20, sample=20, score=0.6940, global_score=0.2139, seq_recovery=0.9237, mutations=9
+[2023-10-28 17:13:19,857] Saving to output/single_pdb/6y1l_imgt.fasta
