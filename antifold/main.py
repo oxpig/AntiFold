@@ -177,8 +177,8 @@ python antifold/main.py \
 
     p.add_argument(
         "--model_path",
-        default="models/model.pt",
-        help="AntiFold model weights. See --use_esm_if1_weights flag to use ESM-IF1 weights instead of AntiFold",
+        default="",
+        help="Alternative model weights (default models/model.pt). See --use_esm_if1_weights flag to use ESM-IF1 weights instead of AntiFold",
     )
 
     p.add_argument(
@@ -272,7 +272,7 @@ def check_valid_input(args):
         sys.exit(1)
 
     # Option 1: PDB file, check heavy and light chain
-    if args.pdb_file:
+    if args.pdb_file and False:
         if not (args.heavy_chain and args.light_chain):
             log.error(
                 f"Single PDB input: Please specify --heavy_chain and --light_chain (e.g. --heavy_chain H --light_chain L)"
@@ -367,6 +367,10 @@ def main(args):
         )
 
     # Load AntiFold or ESM-IF1 model
+    # Infer model from file path
+    if not args.model_path:
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        args.model_path = f"{root_dir}/models/model.pt"
     model = load_IF1_model(args.model_path)
 
     # Get dict with PDBs, sampled sequences and logits / log_odds DataFrame
