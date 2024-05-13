@@ -65,6 +65,7 @@ Freely distributed under the BSD 3-Clause Licence.
 
 import collections
 import os
+
 # Python
 import subprocess
 
@@ -72,6 +73,7 @@ import subprocess
 from anarci import anarci, scheme_names, scheme_short_to_long
 from Bio.Data.SCOPData import protein_letters_3to1
 from Bio.File import as_handle
+
 # Biopython
 from Bio.PDB import *
 from Bio.Seq import Seq

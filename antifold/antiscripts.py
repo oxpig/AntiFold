@@ -567,7 +567,7 @@ def get_temp_probs(df, t=0.20):
     """Gets temperature scaled probabilities for sampling"""
 
     logits = get_df_logits(df)
-    temp_logits = logits / np.max([t, 0.001]) # Lower-bound to prevent div by 0
+    temp_logits = logits / np.max([t, 0.001])  # Lower-bound to prevent div by 0
     temp_probs = F.softmax(temp_logits, dim=1)
 
     return temp_probs

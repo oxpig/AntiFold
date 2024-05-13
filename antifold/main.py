@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+
 # import warnings
 from pathlib import Path
 
@@ -11,9 +12,13 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 
 import pandas as pd
 
-from antifold.antiscripts import (df_logits_to_logprobs, get_pdbs_logits,
-                                  load_IF1_model, sample_from_df_logits,
-                                  write_fasta_to_dir)
+from antifold.antiscripts import (
+    df_logits_to_logprobs,
+    get_pdbs_logits,
+    load_IF1_model,
+    sample_from_df_logits,
+    write_fasta_to_dir,
+)
 
 log = logging.getLogger(__name__)
 

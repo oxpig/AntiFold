@@ -13,9 +13,11 @@ import numpy as np
 import pandas as pd
 import torch
 
-from antifold.esm_multichain_util_custom import (concatenate_coords_any,
-                                                 concatenate_coords_HL,
-                                                 load_complex_coords)
+from antifold.esm_multichain_util_custom import (
+    concatenate_coords_any,
+    concatenate_coords_HL,
+    load_complex_coords,
+)
 
 
 class InverseData(torch.utils.data.Dataset):
