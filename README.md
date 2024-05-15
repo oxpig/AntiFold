@@ -1,24 +1,21 @@
 AntiFold
 ==============================
 
-Code for AntiFold paper (unpublished)
+Code for AntiFold paper
+- Paper: [arXiv pre-print](https://arxiv.org/abs/2405.03370)
+- Webserver: [OPIG webserver](https://opig.stats.ox.ac.uk/webapps/AntiFold/)
+- Colab (outdated): [![Open In Colab](images/colab-badge.svg)](https://colab.research.google.com/drive/1TTfgjoZx3mzF5u4e9b4Un9Y7b_rqXc_4)
+- Model: [model.pt](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt)
+- License: [BSD 3-Clause](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/LICENSE)
 
-Webserver: [OPIG webserver](https://opig.stats.ox.ac.uk/webapps/AntiFold/)
+## Webserver
 
-Code: [antifold_code.zip](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/antifold_code.zip)
-
-Model: [model.pt](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt)
-
-License: [BSD 3-Clause](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/LICENSE)
-
-# Colab
-To test the method out without installing it you can try this: [![Open In Colab](images/colab-badge.svg)](https://colab.research.google.com/drive/1TTfgjoZx3mzF5u4e9b4Un9Y7b_rqXc_4)
+To try AntiFold without installing it, please see our OPIG webserver:
+[https://opig.stats.ox.ac.uk/webapps/antifold/](https://opig.stats.ox.ac.uk/webapps/antifold/)
 
 ## Install and run AntiFold
 
-Use the <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/notebook.ipynb">Jupyter notebook</a> or follow this guide with example PDBs:
-
-### Download AntiFold
+### Download AntiFold code and model
 ```bash
 # Download code and model
 git clone https://github.com/oxpig/AntiFold
@@ -50,7 +47,7 @@ pip install .
 pip install torch-geometric==2.4.0
 ```
 
-### Run AntiFold (residue probabilities, embeddings, sampled sequences)
+### Run AntiFold (inverse-folding probabilities, embeddings, sampled sequences)
 ```bash
 # Run AntiFold on single PDB (or CIF) file
 python antifold/main.py \
