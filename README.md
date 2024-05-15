@@ -52,7 +52,14 @@ pip install torch-geometric==2.4.0
 
 ### Run AntiFold (residue probabilities, embeddings, sampled sequences)
 ```bash
-# Residue probabilities, sample 10 sequences in CDRH3 from single PDB
+# Run AntiFold on single PDB (or CIF) file
+python antifold/main.py \
+    --out_dir output/single_pdb \
+    --pdb_file data/pdbs/6y1l_imgt.pdb \
+    --heavy_chain H \
+    --light_chain L
+
+# Run AntiFold on single PDB and sample 10 sequences
 python antifold/main.py \
     --out_dir output/single_pdb \
     --pdb_file data/pdbs/6y1l_imgt.pdb \
@@ -60,24 +67,30 @@ python antifold/main.py \
     --light_chain L \
     --num_seq_per_target 10 \
     --sampling_temp "0.2" \
-    --regions "CDRH3"
+    --regions "CDR1 CDR2 CDR3"
 
-# Residue probabilities, sample 10 sequences at temperatures 0.20 & 0.30 in CDRs 1-3 from folder of PDBs
+# Run AntiFold on an antibody-antigen complex (enables custom_chain_mode)
+python antifold/main.py \
+    --out_dir output/antibody_antigen \
+    --pdb_file data/antibody_antigen/3hfm.pdb \
+    --heavy_chain H \
+    --light_chain L \
+    --antigen_chain Y
+
+# Run AntiFold on a folder of PDB/CIFs (specify chains to run in CSV file)
+# and consider extra antigen chains
+python antifold/main.py \
+    --out_dir output/antibody_antigen \
+    --pdbs_csv data/antibody_antigen.csv \
+    --pdb_dir data/antibody_antigen \
+    --custom_chain_mode
+
+# Run AntiFold with ESM-IF1 weights instead, and extract per-residue embeddings
 python antifold/main.py \
     --out_dir output/example_pdbs \
     --pdbs_csv data/example_pdbs.csv \
     --pdb_dir data/pdbs \
-    --num_seq_per_target 10 \
-    --sampling_temp "0.20 0.30" \
-    --regions "CDR1 CDR2 CDR3"
-
-# Extract ESM-IF1 embeddings from PDBs in folder, from all chains listed in untested.csv (not limited to VH/VL)
-python antifold/main.py \
-    --out_dir output/untested/ \
-    --pdbs_csv data/untested.csv \
-    --pdb_dir data/untested/ \
     --use_esm_if1_weights \
-    --custom_chain_mode \
     --extract_embeddings
 ```
 

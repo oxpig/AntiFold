@@ -26,33 +26,28 @@ log = logging.getLogger(__name__)
 def cmdline_args():
     # Make parser object
     usage = f"""
-# Run on single PDB, CDRH3 only
+# Run AntiFold on single PDB (or CIF) file
 python antifold/main.py \
     --out_dir output/single_pdb \
     --pdb_file data/pdbs/6y1l_imgt.pdb \
     --heavy_chain H \
+    --light_chain L
+
+# Run AntiFold on an antibody-antigen complex (enables custom_chain_mode)
+python antifold/main.py \
+    --out_dir output/antibody_antigen \
+    --pdb_file data/antibody_antigen/3hfm.pdb \
+    --heavy_chain H \
     --light_chain L \
-    --num_seq_per_target 10 \
-    --sampling_temp "0.2" \
-    --regions "CDRH3"
+    --antigen_chain Y
 
-# Run on example pdbs, all CDRs, temperatures 0.20 and 0.30
+# Run AntiFold on a folder of PDB/CIFs (specify chains to run in CSV file)
+# and consider extra antigen chains
 python antifold/main.py \
-    --out_dir output/example_pdbs \
-    --pdbs_csv data/example_pdbs.csv \
-    --pdb_dir data/pdbs \
-    --num_seq_per_target 10 \
-    --sampling_temp "0.20 0.30" \
-    --regions "CDR1 CDR2 CDR3"
-
-# Extract ESM-IF1 embeddings with custom chains
-python antifold/main.py \
-    --out_dir output/untested/ \
-    --pdbs_csv data/untested.csv \
-    --pdb_dir data/untested/ \
-    --use_esm_if1_weights \
-    --custom_chain_mode \
-    --extract_embeddings
+    --out_dir output/antibody_antigen \
+    --pdbs_csv data/antibody_antigen.csv \
+    --pdb_dir data/antibody_antigen \
+    --custom_chain_mode
     """
     p = ArgumentParser(
         description="Predict antibody variable domain inverse folding probabilities and sample sequences with maintained fold.\nPDB structures should be IMGT-numbered, paired heavy and light chain variable domains (positions 1-128).\n\nFor IMGT numbering PDBs use SAbDab or https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabpred/anarci/",
@@ -90,7 +85,7 @@ python antifold/main.py \
 
     p.add_argument(
         "--antigen_chain",
-        help="Antigen chain (experimental)",
+        help="Antigen chain",
     )
 
     p.add_argument(
@@ -148,7 +143,7 @@ python antifold/main.py \
         "--custom_chain_mode",
         default=False,
         action="store_true",
-        help="Custom chain input (experimental, e.g. single chain, inclusion of antigen chain or any chains with ESM-IF1)",
+        help="Custom chain input (for antibody-antigen complexes or any combination of chains",
     )
 
     p.add_argument(
@@ -319,6 +314,7 @@ def check_valid_input(args):
     # Check model exists, or set to ESM-IF1
     if args.use_esm_if1_weights:
         args.model_path = "ESM-IF1"
+        args.custom_chain_mode = True
         log.info(
             f"--use_esm_if1_weights flag set. Using ESM-IF1 weights instead of AntiFold fine-tuned weights"
         )
@@ -362,6 +358,7 @@ def main(args):
 
         if args.antigen_chain:
             pdbs_csv.loc[0, "Agchain"] = args.antigen_chain
+            args.custom_chain_mode = True
 
         pdb_dir = os.path.dirname(args.pdb_file)
 

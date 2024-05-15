@@ -1,0 +1,15 @@
+[2024-05-15 16:11:51,301] Running inverse folding on PDBs ...
+[2024-05-15 16:11:52,196] Loading AntiFold model /Users/maghoi/projects/antifold_all/oxpig_antifold/AntiFold/models/model.pt...
+[2024-05-15 16:11:52,735] Loaded model to cpu.
+[2024-05-15 16:11:52,736] Saving prediction CSVs to output/antibody_antigen
+[2024-05-15 16:11:52,737] WARNING: Custom chain mode enabled
+[2024-05-15 16:11:52,737] Reading in (4) PDBs from DataFrame
+[2024-05-15 16:11:52,891] Predicting batch 1/4: PDBs 1-1 out of 4 total
+[2024-05-15 16:12:00,562] Predicting batch 2/4: PDBs 2-2 out of 4 total
+[2024-05-15 16:12:03,701] Predicting batch 3/4: PDBs 3-3 out of 4 total
+[2024-05-15 16:12:06,706] Predicting batch 4/4: PDBs 4-4 out of 4 total
+[2024-05-15 16:12:09,656] Saving 4 log-prob CSVs to output/antibody_antigen
+[2024-05-15 16:12:09,659] Writing 3hfm_HLY per-residue log probs CSV to output/antibody_antigen/3hfm_HLY.csv
+[2024-05-15 16:12:09,692] Writing 3hfm_H per-residue log probs CSV to output/antibody_antigen/3hfm_H.csv
+[2024-05-15 16:12:09,706] Writing 3hfm_L per-residue log probs CSV to output/antibody_antigen/3hfm_L.csv
+[2024-05-15 16:12:09,722] Writing 3hfm_Y per-residue log probs CSV to output/antibody_antigen/3hfm_Y.csv
