@@ -302,13 +302,17 @@ def check_valid_input(args):
         missing = 0
         for i, _pdb in enumerate(df["pdb"].values):
             pdb_path = f"{args.pdb_dir}/{_pdb}.pdb"
+
+            # Check for PDB/CIF file
+            pdb_path = pdb_path if os.path.exists(pdb_path) else f"{args.pdb_dir}/{_pdb}.cif"
+
             if not os.path.exists(pdb_path):
-                log.warning(f"WARNING: PDB ({missing+1}) does not exist: {pdb_path}")
+                log.warning(f"WARNING: Unable to find PDB/CIF file ({missing+1}): {pdb_path}")
                 missing += 1
 
         if missing >= 1:
             log.error(
-                f"Missing {missing} PDBs specified in {args.pdbs_csv} CSV file but not found in {args.pdb_dir}"
+                f"WARNING: Missing {missing} PDBs specified in {args.pdbs_csv} but not found in {args.pdb_dir}"
             )
             sys.exit(1)
 

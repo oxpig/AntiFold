@@ -180,10 +180,13 @@ class InverseData(torch.utils.data.Dataset):
         pdb_path_list = []
         for _pdb in df["pdb"]:
             pdb_path = f"{pdb_dir}/{_pdb}.pdb"
-            pdb_path_list.append(pdb_path)
 
+            # Check for PDB/CIF
+            pdb_path = pdb_path if os.path.exists(pdb_path) else f"{pdb_dir}/{_pdb}.cif"
+            pdb_path_list.append(pdb_path)
+            
             if not os.path.exists(pdb_path):
-                raise Exception(f"Unable to find PDB file: {pdb_path}")
+                raise Exception(f"Unable to find PDB/CIF file: {pdb_path}")
 
         # Infer order of chain from CSV columns (first item pdb, then chains)
         # Should be Hchain, Lchain, then any order
