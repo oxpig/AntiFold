@@ -120,7 +120,7 @@ Optional parameters:
 For example webserver output, see:
 [https://opig.stats.ox.ac.uk/webapps/antifold/results/example_job/](https://opig.stats.ox.ac.uk/webapps/antifold/results/example_job/)
 
-Output CSV with residue log-probabilities: Residue probabilities: <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/output/example_pdbs/6y1l_imgt.csv">6y1l_imgt.csv</a>
+Output CSV with residue log-probabilities: Residue probabilities: <a href="https://github.com/oxpig/AntiFold/blob/master/output/example_pdbs/6y1l_imgt.csv">6y1l_imgt.csv</a>
 - pdb_pos - PDB residue number
 - pdb_chain - PDB chain
 - aa_orig - PDB residue (e.g. 112)
@@ -136,7 +136,7 @@ pdb_pos,pdb_chain,aa_orig,aa_pred,pdb_posins,perplexity,A,C,D,E,F,G,H,I,K,L,M,N,
 ...
 ```
 
-Output FASTA file with sampled sequences: <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/output/example_pdbs/6y1l_imgt.fasta">6y1l_imgt.fasta</a>
+Output FASTA file with sampled sequences: <a href="https://github.com/oxpig/AntiFold/blob/master/output/example_pdbs/6y1l_imgt.fasta">6y1l_imgt.fasta</a>
 - T: Temperature used for design
 - score: average log-odds of residues in the sampled region
 - global_score: average log-odds of all residues (IMGT positions 1-128)
@@ -157,7 +157,7 @@ SGSKSGTSATLGITGLQTGDEADYYCGTWDSSLNPVFGGGTKLEIKR
 ...
 ```
 ## Example notebook
-Notebook: <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/notebook.ipynb">notebook.ipynb</a>
+Notebook: <a href="https://github.com/oxpig/AntiFold/blob/master/notebook.ipynb">notebook.ipynb</a>
 
 ```python
 import pandas as pd
