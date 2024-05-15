@@ -3,7 +3,7 @@ AntiFold
 
 Code for AntiFold paper
 - Paper: [arXiv pre-print](https://arxiv.org/abs/2405.03370)
-- Webserver: [OPIG webserver](https://opig.stats.ox.ac.uk/webapps/AntiFold/)
+- Webserver: [OPIG webserver](https://opig.stats.ox.ac.uk/webapps/antifold/)
 - Colab (outdated): [![Open In Colab](images/colab-badge.svg)](https://colab.research.google.com/drive/1TTfgjoZx3mzF5u4e9b4Un9Y7b_rqXc_4)
 - Model: [model.pt](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt)
 - License: [BSD 3-Clause](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/LICENSE)
