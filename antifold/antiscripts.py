@@ -59,7 +59,7 @@ IMGT_dict = {
 
 def load_IF1_checkpoint(model, checkpoint_path: str = ""):
     # Load
-    log.info(f"Loading AntiFold model {checkpoint_path}...")
+    log.info(f"Loading AntiFold model {checkpoint_path} ...")
 
     # Check for CPU/GPU load
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -642,21 +642,25 @@ def sample_from_df_logits(
                 verbose=verbose,
             )
 
-            # Statistics
-            seq_recovery = (H_orig == H_mut).sum() / len(H_orig)
-            n_mut = (H_orig != H_mut).sum()
+            # Original sequence
+            seq_orig = "".join(H_orig) + "".join(L_orig)
 
-            seq = "".join(H_mut) + "".join(L_mut)
+            # Sequence recovery and mismatches
+            correct_matches = (H_orig == H_mut).sum() + (L_orig == L_mut).sum()
+            seq_recovery = correct_matches / len(seq_orig)
+            n_mut = (H_orig != H_mut).sum() + (L_orig != L_mut).sum()
+
+            seq_mut = "".join(H_mut) + "".join(L_mut)
             score_sampled, global_score = get_sequence_sampled_global_score(
-                seq, df_logits, regions_to_mutate
+                seq_mut, df_logits, regions_to_mutate
             )
 
             # Save to FASTA dict
             _id = f"{df_logits.name}__{n+1}"
             desc = f"T={t:.2f}, sample={n+1}, score={score_sampled:.4f}, global_score={global_score:.4f}, seq_recovery={seq_recovery:.4f}, mutations={n_mut}"
-            seq = "".join(H_mut) + "/" + "".join(L_mut)
+            seq_mut = "".join(H_mut) + "/" + "".join(L_mut)
             fasta_dict[_id] = SeqIO.SeqRecord(
-                Seq(seq), id="", name="", description=desc
+                Seq(seq_mut), id="", name="", description=desc
             )
 
             if verbose:
