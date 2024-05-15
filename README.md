@@ -1,7 +1,10 @@
 AntiFold
 ==============================
 
-Code for AntiFold paper
+AntiFold predicts sequences which fit into an input antibody variable domain structure. The tool outputs residue log-likelihoods in CSV format, and can sample sequences to a FASTA format directly. Sampled sequences show high structural agreement with experimental structures.
+
+AntiFold is based on the ESM-IF1 model and is fine-tuned on solved and predicted antibody structures from SAbDab and OAS.
+
 - Paper: [arXiv pre-print](https://arxiv.org/abs/2405.03370)
 - Webserver: [OPIG webserver](https://opig.stats.ox.ac.uk/webapps/antifold/)
 - Colab (outdated): [![Open In Colab](images/colab-badge.svg)](https://colab.research.google.com/drive/1TTfgjoZx3mzF5u4e9b4Un9Y7b_rqXc_4)
@@ -114,6 +117,9 @@ Optional parameters:
 ```
 
 ## Example output
+For example webserver output, see:
+[https://opig.stats.ox.ac.uk/webapps/antifold/results/example_job/](https://opig.stats.ox.ac.uk/webapps/antifold/results/example_job/)
+
 Output CSV with residue log-probabilities: Residue probabilities: <a href="https://opig.stats.ox.ac.uk/data/downloads/AntiFold/output/example_pdbs/6y1l_imgt.csv">6y1l_imgt.csv</a>
 - pdb_pos - PDB residue number
 - pdb_chain - PDB chain
