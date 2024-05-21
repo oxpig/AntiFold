@@ -71,17 +71,17 @@ python antifold/main.py \
 
     p.add_argument(
         "--heavy_chain",
-        help="Ab heavy chain (for single PDB predictions)",
+        help="Antibody heavy chain (for single PDB predictions)",
     )
 
     p.add_argument(
         "--light_chain",
-        help="Ab light chain (for single PDB predictions)",
+        help="Antibody light chain (for single PDB predictions)",
     )
 
     p.add_argument(
         "--antigen_chain",
-        help="Antigen chain",
+        help="Antigen chain (optional)",
     )
 
     p.add_argument(
@@ -281,6 +281,10 @@ def check_valid_input(args):
 
     # Option 2: Check PDBs in PDB dir and CSV formatted correctly
     elif args.pdb_dir and args.pdbs_csv:
+
+        # Run all chains specified in the CSV file
+        args.custom_chain_mode = True
+
         # Check CSV formatting
         df = pd.read_csv(args.pdbs_csv, comment="#")
         if (
@@ -321,7 +325,7 @@ def check_valid_input(args):
         log.warning(
             f"WARNING: Heavy/light chains not specified for PDB/CIF files in folder {_dir}. Assuming 1st chain heavy, 2nd chain light."
         )
-        log.warning(f"WARNING: Specify manually with CSV file and --pdbs_csv")
+        log.warning(f"WARNING: Specify manually with --pdbs_csv CSV file")
 
     # Check model exists, or set to ESM-IF1
     if args.esm_if1_mode:

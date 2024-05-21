@@ -50,18 +50,32 @@ pip install .
 pip install torch-geometric==2.4.0
 ```
 
-### Run AntiFold (inverse-folding probabilities, embeddings, sampled sequences)
+### Run AntiFold (inverse-folding probabilities, sample sequences)
 ```bash
-# Run AntiFold on single PDB (or CIF) file
+# Run AntiFold on single PDB/CIF file
+# Nb: Assumes first chain heavy, second chain light
 python antifold/main.py \
-    --out_dir output/single_pdb \
-    --pdb_file data/pdbs/6y1l_imgt.pdb \
-    --heavy_chain H \
-    --light_chain L
+    --pdb_file data/pdbs/6y1l_imgt.pdb
 
-# Run AntiFold on single PDB and sample 10 sequences
+# Run AntiFold on an antibody-antigen complex
 python antifold/main.py \
-    --out_dir output/single_pdb \
+    --pdb_file data/antibody_antigen/3hfm.pdb \
+    --heavy_chain H \
+    --light_chain L \
+    --antigen_chain Y
+
+# Run AntiFold on a folder of PDB/CIFs
+# Nb: Assumes first chain heavy, second light
+python antifold/main.py \
+    --pdb_dir data/pdbs
+
+# Specify chains to run in a CSV file (e.g. antibody-antigen complex)
+python antifold/main.py \
+    --pdb_dir data/antibody_antigen \
+    --pdbs_csv data/antibody_antigen.csv
+
+# Sample sequences 10x
+python antifold/main.py \
     --pdb_file data/pdbs/6y1l_imgt.pdb \
     --heavy_chain H \
     --light_chain L \
@@ -69,41 +83,29 @@ python antifold/main.py \
     --sampling_temp "0.2" \
     --regions "CDR1 CDR2 CDR3"
 
-# Run AntiFold on an antibody-antigen complex (enables custom_chain_mode)
+# Run all chains with ESM-IF1
 python antifold/main.py \
-    --out_dir output/antibody_antigen \
-    --pdb_file data/antibody_antigen/3hfm.pdb \
-    --heavy_chain H \
-    --light_chain L \
-    --antigen_chain Y
-
-# Run AntiFold on a folder of PDB/CIFs (specify chains to run in CSV file)
-# and consider extra antigen chains
-python antifold/main.py \
-    --out_dir output/antibody_antigen \
-    --pdbs_csv data/antibody_antigen.csv \
-    --pdb_dir data/antibody_antigen \
-    --custom_chain_mode
-
-# Run AntiFold with ESM-IF1 weights instead, and extract per-residue embeddings
-python antifold/main.py \
-    --out_dir output/example_pdbs \
-    --pdbs_csv data/example_pdbs.csv \
     --pdb_dir data/pdbs \
-    --use_esm_if1_weights \
-    --extract_embeddings
+    --esm_if1_mode
 ```
 
 ## Input parameters
 Required parameters:
 ```text
-- Option 1: PDB file (--pdb_file) + specified heavy and light chain (--heavy_chain and --light_chain)
+Input PDBs should be antibody variable domain structures (IMGT positions 1-128).
+
+If no chains are specified, the first two chains will be assumed to be heavy light.
+If custom_chain_mode is set, all (10) chains will be run.
+
+- Option 1: PDB file (--pdb_file). We recommend specifying heavy and light chain (--heavy_chain and --light_chain)
 - Option 2: PDB folder (--pdb_dir) + CSV file specifying chains (--pdbs_csv)
-- Output directory (--out_dir) for output inverse folding probabilities CSV and optional generated sequences FASTA
+- Option 3: PDB folder, infer 1st chain heavy, 2nd chain light
 ```
 
 Parameters for generating new sequences:
 ```text
+PDBs should be IMGT annotated for the sequence sampling regions to be valid.
+
 - Number of sequences to generate (--num_seq_per_target)
 - Region to mutate (--region) based on inverse folding probabilities. Select from list in IMGT_dict (e.g. 'CDRH1 CDRH2 CDRH3')
 - Sampling temperature (--sampling_temp) controls generated sequence diversity, by scaling the inverse folding probabilities before sampling. Temperature = 1 means no change, while temperature ~ 0 only samples the most likely amino-acid at each position (acts as argmax).
@@ -111,9 +113,9 @@ Parameters for generating new sequences:
 
 Optional parameters:
 ```text
-- Multi-chain mode for including antigen or other chains (--custom_chain_mode) - Nb, experimental (see example above)
+- Multi-chain mode for including antigen or other chains (--custom_chain_mode)
 - Extract latent representations of PDB within model (--extract_embeddings)
-- Use ESM-IF1 instead of AntiFold model weights (--model_path "ESM-IF1")
+- Use ESM-IF1 instead of AntiFold model weights (--esm_if1_mode), enables custom_chain_mode
 ```
 
 ## Example output
@@ -124,7 +126,7 @@ Output CSV with residue log-probabilities: Residue probabilities: <a href="https
 - pdb_pos - PDB residue number
 - pdb_chain - PDB chain
 - aa_orig - PDB residue (e.g. 112)
-- aa_pred - Top predicted residue by AntiFold (argmax) for this position
+- aa_pred - Top predicted residue by AntiFold (i.e. argmax) for this position
 - pdb_posins - PDB residue number with insertion code (e.g. 112A)
 - perplexity - Inverse folding tolerance (higher is more tolerant) to mutations. See paper for more details.
 - Amino-acids - Inverse folding scores (log-likelihood) for the given position
@@ -199,7 +201,11 @@ fasta_dict = pdb_output_dict["6y1l_imgt"]["sequences"]
 ```bash
 usage: 
     # Predict on example PDBs in folder
-    python antifold/main.py     --pdbs_csv data/example_pdbs.csv     --pdb_dir data/pdbs     --out_dir output/
+python antifold/main.py \
+    --pdb_file data/antibody_antigen/3hfm.pdb \
+    --heavy_chain H \
+    --light_chain L \
+    --antigen_chain Y # Optional
 
 Predict inverse folding probabilities for antibody variable domain, and sample sequences with maintained fold.
 PDB structures should be IMGT-numbered, paired heavy and light chain variable domains (positions 1-128).
@@ -214,7 +220,7 @@ options:
   --light_chain LIGHT_CHAIN
                         Ab light chain (for single PDB predictions)
   --antigen_chain ANTIGEN_CHAIN
-                        Antigen chain (experimental)
+                        Antigen chain
   --pdbs_csv PDBS_CSV   Input CSV file with PDB names and H/L chains (multi-PDB predictions)
   --pdb_dir PDB_DIR     Directory with input PDB files (multi-PDB predictions)
   --out_dir OUT_DIR     Output directory
@@ -225,7 +231,7 @@ options:
                         A string of temperatures e.g. '0.20 0.25 0.50' (default 0.20). Sampling temperature for amino acids. Suggested values 0.10, 0.15, 0.20, 0.25, 0.30. Higher values will lead to more diversity.
   --limit_variation     Limit variation to as many mutations as expected from temperature sampling
   --extract_embeddings  Extract per-residue embeddings from AntiFold / ESM-IF1
-  --custom_chain_mode   Custom chain input (experimental, e.g. single chain, inclusion of antigen chain or any chains with ESM-IF1)
+  --custom_chain_mode   Run all specified chains (for antibody-antigen complexes or any combination of chains)
   --exclude_heavy       Exclude heavy chain from sampling
   --exclude_light       Exclude light chain from sampling
   --batch_size BATCH_SIZE
@@ -234,9 +240,8 @@ options:
                         Number of CPU threads to use for parallel processing (0 = all available)
   --seed SEED           Seed for reproducibility
   --model_path MODEL_PATH
-                        AntiFold model weights. See --use_esm_if1_weights flag to use ESM-IF1 weights instead of AntiFold
-  --use_esm_if1_weights
-                        Use ESM-IF1 weights instead of AntiFold
+                        Alternative model weights (default models/model.pt). See --use_esm_if1_weights flag to use ESM-IF1 weights instead of AntiFold
+  --esm_if1_mode        Use ESM-IF1 weights instead of AntiFold
   --verbose VERBOSE     Verbose printing
 ```
 
