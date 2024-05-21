@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-
 # import warnings
 from pathlib import Path
 
@@ -12,13 +11,10 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 
 import pandas as pd
 
-from antifold.antiscripts import (
-    df_logits_to_logprobs,
-    get_pdbs_logits,
-    load_IF1_model,
-    sample_from_df_logits,
-    write_fasta_to_dir,
-)
+from antifold.antiscripts import (df_logits_to_logprobs,
+                                  extract_chains_biotite, generate_pdbs_csv,
+                                  get_pdbs_logits, load_IF1_model,
+                                  sample_from_df_logits, write_fasta_to_dir)
 
 log = logging.getLogger(__name__)
 
@@ -102,7 +98,7 @@ python antifold/main.py \
 
     p.add_argument(
         "--out_dir",
-        default="output",
+        default="antifold_output",
         help="Output directory",
     )
 
@@ -143,7 +139,7 @@ python antifold/main.py \
         "--custom_chain_mode",
         default=False,
         action="store_true",
-        help="Custom chain input (for antibody-antigen complexes or any combination of chains",
+        help="Run all specified chains (for antibody-antigen complexes or any combination of chains)",
     )
 
     p.add_argument(
@@ -182,7 +178,7 @@ python antifold/main.py \
     )
 
     p.add_argument(
-        "--use_esm_if1_weights",
+        "--esm_if1_mode",
         default=False,
         action="store_true",
         help="Use ESM-IF1 weights instead of AntiFold",
@@ -262,25 +258,29 @@ def check_valid_input(args):
 
     # Check valid input files input arguments
     # Check either: PDB file, PDB dir or PDBs CSV inputted
-    if not (args.pdb_file or (args.pdb_dir and args.pdbs_csv)):
+    if not (args.pdb_file or args.pdb_dir):
         log.error(
             f"""Please choose one of:
-        1) PDB file (--pdb_file) with --heavy_chain [letter] and --light_chain [letter]
+        1) PDB file (--pdb_file). We heavily recommend specifying --heavy_chain [letter] and --light_chain [letter]
         2) PDB directory (--pdb_dir) and CSV file (--pdbs_csv) with columns for PDB names (pdb), H (Hchain) and L (Lchain) chains
+        3) PDB directory (--pdb_dir). Warning: Will assume 1st chain is heavy, 2nd chain is light
         """
         )
         sys.exit(1)
 
     # Option 1: PDB file, check heavy and light chain
-    if args.pdb_file and False:
+    if args.pdb_file:
         if not (args.heavy_chain and args.light_chain):
-            log.error(
-                f"Single PDB input: Please specify --heavy_chain and --light_chain (e.g. --heavy_chain H --light_chain L)"
+            _pdb = os.path.splitext(os.path.basename(args.pdb_file))[0]
+            log.warning(
+                f"WARNING: Heavy/light chains not specified for {_pdb}. Assuming 1st chain heavy, 2nd chain light."
             )
-            sys.exit(1)
+            log.warning(
+                f"WARNING: Specify manually with e.g. --heavy_chain H --light_chain L"
+            )
 
     # Option 2: Check PDBs in PDB dir and CSV formatted correctly
-    if args.pdb_dir and args.pdbs_csv:
+    elif args.pdb_dir and args.pdbs_csv:
         # Check CSV formatting
         df = pd.read_csv(args.pdbs_csv, comment="#")
         if (
@@ -299,24 +299,40 @@ def check_valid_input(args):
             pdb_path = f"{args.pdb_dir}/{_pdb}.pdb"
 
             # Check for PDB/CIF file
-            pdb_path = pdb_path if os.path.exists(pdb_path) else f"{args.pdb_dir}/{_pdb}.cif"
+            pdb_path = (
+                pdb_path if os.path.exists(pdb_path) else f"{args.pdb_dir}/{_pdb}.cif"
+            )
 
             if not os.path.exists(pdb_path):
-                log.warning(f"WARNING: Unable to find PDB/CIF file ({missing+1}): {pdb_path}")
+                log.warning(
+                    f"WARNING: Unable to find PDB/CIF file ({missing+1}): {pdb_path}"
+                )
                 missing += 1
 
         if missing >= 1:
             log.error(
-                f"WARNING: Missing {missing} PDBs specified in {args.pdbs_csv} but not found in {args.pdb_dir}"
+                f"WARNING: Missing {missing} PDB/CIFs specified in {args.pdbs_csv} but not found in {args.pdb_dir}"
             )
             sys.exit(1)
 
+    # Option 3: PDB directory only, infer chains
+    elif args.pdb_dir:
+        _dir = os.path.dirname(args.pdb_dir)
+        log.warning(
+            f"WARNING: Heavy/light chains not specified for PDB/CIF files in folder {_dir}. Assuming 1st chain heavy, 2nd chain light."
+        )
+        log.warning(f"WARNING: Specify manually with CSV file and --pdbs_csv")
+
     # Check model exists, or set to ESM-IF1
-    if args.use_esm_if1_weights:
+    if args.esm_if1_mode:
         args.model_path = "ESM-IF1"
         args.custom_chain_mode = True
+
+        if args.out_dir == "antifold_output":
+            args.out_dir = "esmif1_output"
+
         log.info(
-            f"--use_esm_if1_weights flag set. Using ESM-IF1 weights instead of AntiFold fine-tuned weights"
+            f"NOTE: ESM-IF1 mode enabled, will use ESM-IF1 weights and run all specified chains"
         )
 
 
@@ -344,9 +360,22 @@ def main(args):
             "Sampling temperature must be a float or space-separated floats, e.g. '0.20 0.25 0.50'"
         )
 
+    # No chains provided: assume 1st chain is heavy, 2nd is light
+
     # Option 1: Single PDB
     if args.pdb_file:
+
         _pdb = os.path.splitext(os.path.basename(args.pdb_file))[0]
+
+        # No chains specified, assume 1st heavy, 2nd light
+        if not (args.heavy_chain and args.light_chain):
+            args.heavy_chain, args.light_chain = extract_chains_biotite(args.pdb_file)[
+                :2
+            ]
+            log.warning(
+                f"{_pdb}: assuming heavy_chain {args.heavy_chain}, light_chain {args.light_chain}"
+            )
+
         pdbs_csv = pd.DataFrame(
             {
                 "pdb": _pdb,
@@ -362,11 +391,24 @@ def main(args):
 
         pdb_dir = os.path.dirname(args.pdb_file)
 
-    # Option 2: CSV + PDB dir
-    else:
+    # Option 2: PDB dir and CSV file
+    elif args.pdb_dir and args.pdbs_csv:
         pdbs_csv = pd.read_csv(args.pdbs_csv, comment="#")
         pdb_dir = args.pdb_dir
 
+    # Option 3: PDB dir and no CSV file (infer chains)
+    else:
+        pdb_dir = args.pdb_dir
+
+        # custom_chain_mode consider all (10) chains in file
+        if args.custom_chain_mode:
+            pdbs_csv = generate_pdbs_csv(args.pdb_dir, max_chains=10)
+
+        # Other only consider 1st (heavy) chain and 2nd (light) chain
+        else:
+            pdbs_csv = generate_pdbs_csv(args.pdb_dir, max_chains=2)
+
+    # Extra: Sample sequences with num_seq_per_target >= 1
     if args.num_seq_per_target >= 1:
         log.info(
             f"Will sample {args.num_seq_per_target} sequences from {len(pdbs_csv.values)} PDBs at temperature(s) {args.sampling_temp} and regions: {regions_to_mutate}"
@@ -427,13 +469,10 @@ if __name__ == "__main__":
         logging.getLogger().setLevel(logging.DEBUG)
 
     # Check valid input
-    check_valid_input(args)
-
     try:
-        log.info(f"Running inverse folding on PDBs ...")
+        log.info(f"Running inverse folding on PDB/CIFs ...")
+        check_valid_input(args)
         main(args)
 
     except Exception as E:
-        log.exception(
-            f"Prediction encountered an unexpected error. This is likely a bug in the server software: {E}"
-        )
+        log.exception(f"Prediction encountered an unexpected error: {E}")

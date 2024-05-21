@@ -13,11 +13,9 @@ import numpy as np
 import pandas as pd
 import torch
 
-from antifold.esm_multichain_util_custom import (
-    concatenate_coords_any,
-    concatenate_coords_HL,
-    load_complex_coords,
-)
+from antifold.esm_multichain_util_custom import (concatenate_coords_any,
+                                                 concatenate_coords_HL,
+                                                 load_complex_coords)
 
 
 class InverseData(torch.utils.data.Dataset):
@@ -44,7 +42,9 @@ class InverseData(torch.utils.data.Dataset):
         self.verbose = verbose
 
         if self.custom_chain_mode:
-            log.info("WARNING: Custom chain mode enabled")
+            log.info(
+                "NOTE: Custom chain mode enabled. Will run all specified chains (not just heavy/light)."
+            )
 
     def load_coords_HL(
         self, pdb_path: str, Hchain: str, Lchain: str
@@ -184,7 +184,7 @@ class InverseData(torch.utils.data.Dataset):
             # Check for PDB/CIF
             pdb_path = pdb_path if os.path.exists(pdb_path) else f"{pdb_dir}/{_pdb}.cif"
             pdb_path_list.append(pdb_path)
-            
+
             if not os.path.exists(pdb_path):
                 raise Exception(f"Unable to find PDB/CIF file: {pdb_path}")
 

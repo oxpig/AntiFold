@@ -1,3 +1,4 @@
+import glob
 import logging
 import os
 import sys
@@ -16,6 +17,7 @@ import torch
 import torch.nn.functional as F
 from Bio import SeqIO
 from Bio.Seq import Seq
+from biotite.structure.io import pdb
 
 import antifold.esm
 from antifold.esm_util_custom import CoordBatchConverter_mask_gpu
@@ -57,9 +59,49 @@ IMGT_dict = {
 }
 
 
+def extract_chains_biotite(pdb_file):
+    """Extract chains in order"""
+    pdbf = pdb.PDBFile.read(pdb_file)
+    structure = pdb.get_structure(pdbf, model=1)
+    return pd.unique(structure.chain_id)
+
+
+def generate_pdbs_csv(pdbs_dir, max_chains=10):
+    """Generates AntiFOld CSV with PDB/CIF basenames + chains (up to 10)"""
+
+    columns = [
+        "pdb",
+        "Hchain",
+        "Lchain",
+        "chain3",
+        "chain4",
+        "chain5",
+        "chain6",
+        "chain7",
+        "chain8",
+        "chain9",
+        "chain10",
+    ]
+    pdbs_csv = pd.DataFrame(columns=columns)
+    pdbs = glob.glob(f"{pdbs_dir}/*.[pdb cif]*")
+
+    for i, pdb_file in enumerate(pdbs):
+        _pdb = os.path.splitext(os.path.basename(pdb_file))[0]
+
+        # Extract first 10 chains
+        chains = extract_chains_biotite(pdb_file)[:max_chains]
+
+        # Put pdb and chains in dataframe
+        row = [_pdb] + list(chains)
+        _cols = columns[: len(row)]
+        pdbs_csv.loc[i, _cols] = row
+
+    return pdbs_csv
+
+
 def load_IF1_checkpoint(model, checkpoint_path: str = ""):
     # Load
-    log.info(f"Loading AntiFold model {checkpoint_path} ...")
+    log.debug(f"Loading AntiFold model {checkpoint_path} ...")
 
     # Check for CPU/GPU load
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -100,7 +142,7 @@ def load_IF1_model(checkpoint_path: str = ""):
     # Download IF1 weights
     if checkpoint_path == "ESM-IF1":
         log.info(
-            f"WARNING: Loading ESM-IF1 weights instead of fine-tuned AntiFold weights"
+            f"NOTE: Loading ESM-IF1 weights instead of fine-tuned AntiFold weights"
         )
         # Suppress regression weights warning - not needed
         with warnings.catch_warnings():
@@ -345,7 +387,7 @@ def df_logits_list_to_logprob_csvs(
 ):
     """Save df_logits_list to CSVs"""
     os.makedirs(out_dir, exist_ok=True)
-    log.info(f"Saving {len(df_logits_list)} log-prob CSVs to {out_dir}")
+    log.info(f"Saving {len(df_logits_list)} CSVs to {out_dir}")
 
     for i, df in enumerate(df_logits_list):
         # Convert to log-probs
@@ -394,8 +436,8 @@ def get_pdbs_logits(
 ):
     """Predict PDBs from a CSV file"""
 
-    if save_flag:
-        log.info(f"Saving prediction CSVs to {out_dir}")
+    # if save_flag:
+    #    log.info(f"Saving prediction CSVs to {out_dir}")
 
     seed_everything(seed)
 
