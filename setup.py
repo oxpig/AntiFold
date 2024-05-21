@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
 from setuptools import find_packages, setup
 
 REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
 
 setup(
     name="antifold",
-    version="1.0.0",
+    version="0.0.3",
     packages=find_packages(),
     description="Inverse folding of antibodies",
     url="https://github.com/Magnushhoie/antifold_web/",

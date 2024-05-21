@@ -83,9 +83,7 @@ class InverseData(torch.utils.data.Dataset):
         )
 
     def load_coords_any(
-        self,
-        pdb_path: str,
-        chains: list,
+        self, pdb_path: str, chains: list,
     ) -> Tuple[np.array, str, np.array]:
         """Read pdb file and extract coordinates of backbone (N, CA, C) atoms of given chains
         Args:
@@ -99,8 +97,7 @@ class InverseData(torch.utils.data.Dataset):
 
         # Get all chains
         coords_dict, seq_dict, pos_dict, posinschain_dict = load_complex_coords(
-            pdb_path,
-            chains,
+            pdb_path, chains,
         )
 
         # Concatenate
@@ -110,11 +107,7 @@ class InverseData(torch.utils.data.Dataset):
             pos_concatenated,
             posinschain_concatenated,
         ) = concatenate_coords_any(
-            coords_dict,
-            seq_dict,
-            pos_dict,
-            posinschain_dict,
-            chains,
+            coords_dict, seq_dict, pos_dict, posinschain_dict, chains,
         )
 
         # Limit to IMGT VH/VL regions (pos 1-128)
@@ -243,9 +236,7 @@ class InverseData(torch.utils.data.Dataset):
             Lchain = self.pdb_info_dict[idx]["Lchain"]
 
             coords, seq_pdb, pos_pdb, pos_pdb_arr_str = self.load_coords_HL(
-                pdb_path,
-                Hchain,
-                Lchain,
+                pdb_path, Hchain, Lchain,
             )
 
         # Not used, included for legacy reasons

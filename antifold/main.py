@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 # import warnings
+import urllib.request
 from pathlib import Path
 
 ROOT_PATH = Path(os.path.dirname(__file__)).parent
@@ -70,18 +71,15 @@ python antifold/main.py \
     )
 
     p.add_argument(
-        "--heavy_chain",
-        help="Antibody heavy chain (for single PDB predictions)",
+        "--heavy_chain", help="Antibody heavy chain (for single PDB predictions)",
     )
 
     p.add_argument(
-        "--light_chain",
-        help="Antibody light chain (for single PDB predictions)",
+        "--light_chain", help="Antibody light chain (for single PDB predictions)",
     )
 
     p.add_argument(
-        "--antigen_chain",
-        help="Antigen chain (optional)",
+        "--antigen_chain", help="Antigen chain (optional)",
     )
 
     p.add_argument(
@@ -97,9 +95,7 @@ python antifold/main.py \
     )
 
     p.add_argument(
-        "--out_dir",
-        default="antifold_output",
-        help="Output directory",
+        "--out_dir", default="antifold_output", help="Output directory",
     )
 
     p.add_argument(
@@ -151,10 +147,7 @@ python antifold/main.py \
     )
 
     p.add_argument(
-        "--batch_size",
-        default=1,
-        type=int,
-        help="Batch-size to use",
+        "--batch_size", default=1, type=int, help="Batch-size to use",
     )
 
     p.add_argument(
@@ -165,10 +158,7 @@ python antifold/main.py \
     )
 
     p.add_argument(
-        "--seed",
-        default=42,
-        type=int,
-        help="Seed for reproducibility",
+        "--seed", default=42, type=int, help="Seed for reproducibility",
     )
 
     p.add_argument(
@@ -185,10 +175,7 @@ python antifold/main.py \
     )
 
     p.add_argument(
-        "--verbose",
-        default=1,
-        type=int,
-        help="Verbose printing",
+        "--verbose", default=1, type=int, help="Verbose printing",
     )
 
     return p.parse_args()
@@ -268,6 +255,16 @@ def check_valid_input(args):
         )
         sys.exit(1)
 
+    # Check that AntiFold weights are downloaded
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if not os.path.exists(f"{root_dir}/models/model.pt"):
+        log.warning(
+            f"Downloading AntiFold model weights to models/model.pt from https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt"
+        )
+        url = "https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt"
+        filename = "models/model.pt"
+        urllib.request.urlretrieve(url, filename)
+
     # Option 1: PDB file, check heavy and light chain
     if args.pdb_file:
         if not (args.heavy_chain and args.light_chain):
@@ -327,7 +324,7 @@ def check_valid_input(args):
         )
         log.warning(f"WARNING: Specify manually with --pdbs_csv CSV file")
 
-    # Check model exists, or set to ESM-IF1
+    # ESM-IF1 mode
     if args.esm_if1_mode:
         args.model_path = "ESM-IF1"
         args.custom_chain_mode = True
@@ -381,11 +378,7 @@ def main(args):
             )
 
         pdbs_csv = pd.DataFrame(
-            {
-                "pdb": _pdb,
-                "Hchain": args.heavy_chain,
-                "Lchain": args.light_chain,
-            },
+            {"pdb": _pdb, "Hchain": args.heavy_chain, "Lchain": args.light_chain,},
             index=[0],
         )
 

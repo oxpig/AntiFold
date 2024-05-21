@@ -221,8 +221,7 @@ def get_dataset_dataloader(
 
     # Load PDB coordinates
     dataset = InverseData(
-        gaussian_noise_flag=False,
-        custom_chain_mode=custom_chain_mode,
+        gaussian_noise_flag=False, custom_chain_mode=custom_chain_mode,
     )
     dataset.populate(pdbs_csv_or_dataframe, pdb_dir)
 
@@ -343,10 +342,7 @@ def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader):
 
         # Logits to DataFrame
         alphabet = antifold.esm.data.Alphabet.from_architecture("invariant_gvp")
-        df_logits = pd.DataFrame(
-            data=seq_probs,
-            columns=alphabet.all_toks[4:25],
-        )
+        df_logits = pd.DataFrame(data=seq_probs, columns=alphabet.all_toks[4:25],)
 
         # Limit to 20x amino-acids probs
         _alphabet = list("ACDEFGHIKLMNPQRSTVWY")

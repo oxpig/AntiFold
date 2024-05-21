@@ -219,7 +219,7 @@ def rbf(values, v_min, v_max, n_bins=16):
     rbf_std = (v_max - v_min) / n_bins
     # v_expand = torch.unsqueeze(values, -1)
     z = (values.unsqueeze(-1) - rbf_centers) / rbf_std
-    return torch.exp(-(z**2))
+    return torch.exp(-(z ** 2))
 
 
 def norm(tensor, dim, eps=1e-8, keepdim=False):
@@ -394,10 +394,7 @@ class CoordBatchConverter_mask_gpu(BatchConverter):
 
         batch_size = len(val_list)
         max_len = max(len(v) for v in val_list)
-        out = torch.full(
-            size=(batch_size, max_len + 2),
-            fill_value=np.nan,
-        )  # bos, eos
+        out = torch.full(size=(batch_size, max_len + 2), fill_value=np.nan,)  # bos, eos
         for i, rp in enumerate(val_list):
             out[i, 1 : len(rp) + 1] = torch.tensor(np.array(rp))
 
@@ -551,10 +548,7 @@ class CoordBatchConverter_mask(BatchConverter):
 
         batch_size = len(val_list)
         max_len = max(len(v) for v in val_list)
-        out = torch.full(
-            size=(batch_size, max_len + 2),
-            fill_value=np.nan,
-        )  # bos, eos
+        out = torch.full(size=(batch_size, max_len + 2), fill_value=np.nan,)  # bos, eos
         for i, rp in enumerate(val_list):
             out[i, 1 : len(rp) + 1] = torch.tensor(np.array(rp))
 
