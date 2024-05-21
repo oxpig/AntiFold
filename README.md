@@ -33,9 +33,8 @@ pip install antifold
 
 #### Download and install from Github source (latest release)
 ```bash
-# Download code and model
-git clone https://github.com/oxpig/AntiFold && cd AntiFold
 conda create --name antifold python=3.10 -y && conda activate antifold
+git clone https://github.com/oxpig/AntiFold && cd AntiFold
 pip install .
 ```
 
