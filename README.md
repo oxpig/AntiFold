@@ -36,6 +36,7 @@ pip install antifold
 ```bash
 conda create --name antifold python=3.10 -y && conda activate antifold
 git clone https://github.com/oxpig/AntiFold && cd AntiFold
+conda install -c conda-forge pytorch
 pip install .
 ```
 
