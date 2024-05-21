@@ -144,7 +144,7 @@ def load_model(checkpoint_path: str = ""):
             f"Downloading AntiFold model weights to models/model.pt from https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt"
         )
         url = "https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt"
-        filename = "models/model.pt"
+        filename = model_path
         urllib.request.urlretrieve(url, filename)
 
     if not os.path.exists(model_path) and not checkpoint_path == "ESM-IF1":
