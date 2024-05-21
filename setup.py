@@ -4,7 +4,7 @@ REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
 
 setup(
     name="antifold",
-    version="0.1.0",
+    version="1.0.0",
     packages=find_packages(),
     description="Inverse folding of antibodies",
     url="https://github.com/Magnushhoie/antifold_web/",
@@ -12,9 +12,9 @@ setup(
     author_email="maghoi@dtu.dk & alissa.hummer@stcatz.ox.ac.uk",
     install_requires=REQUIREMENTS,
     classifiers=[
-        "Development Status :: 1 - Planning",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Science/Research",
         "Operating System :: POSIX :: Linux",
-        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
 )
