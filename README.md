@@ -21,6 +21,7 @@ To try AntiFold without installing it, please see our OPIG webserver:
 #### Install AntiFold with pip (CPU)
 ```bash
 conda create --name antifold python=3.10 -y && activate antifold
+conda install -c conda-forge pytorch
 pip install antifold
 ```
 
