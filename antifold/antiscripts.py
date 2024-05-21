@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 import warnings
+import urllib.request
 from pathlib import Path
 
 ROOT_PATH = Path(os.path.dirname(__file__)).parent
@@ -131,10 +132,22 @@ def load_IF1_checkpoint(model, checkpoint_path: str = ""):
     return model
 
 
-def load_IF1_model(checkpoint_path: str = ""):
+def load_model(checkpoint_path: str = ""):
     """Load raw/FT IF1 model"""
 
-    if not os.path.exists(checkpoint_path) and not checkpoint_path == "ESM-IF1":
+    # Check that AntiFold weights are downloaded
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    model_path = f"{root_dir}/models/model.pt"
+
+    if not os.path.exists(model_path):
+        log.warning(
+            f"Downloading AntiFold model weights to models/model.pt from https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt"
+        )
+        url = "https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt"
+        filename = "models/model.pt"
+        urllib.request.urlretrieve(url, filename)
+
+    if not os.path.exists(model_path) and not checkpoint_path == "ESM-IF1":
         raise Exception(
             f"Unable to find model weights. File does not exist: {checkpoint_path}"
         )
@@ -152,7 +165,7 @@ def load_IF1_model(checkpoint_path: str = ""):
     # Load AntiFold weights locally
     else:
         model, _ = antifold.esm.pretrained._load_IF1_local()
-        model = load_IF1_checkpoint(model, checkpoint_path)
+        model = load_IF1_checkpoint(model, model_path)
 
     # Evaluation mode when predicting
     model = model.eval()
@@ -426,7 +439,7 @@ def get_pdbs_logits(
     extract_embeddings=False,
     custom_chain_mode=False,
     num_threads=0,
-    save_flag=True,
+    save_flag=False,
     float_format="%.4f",
     seed=42,
 ):

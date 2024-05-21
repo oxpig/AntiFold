@@ -14,8 +14,9 @@ import pandas as pd
 
 from antifold.antiscripts import (df_logits_to_logprobs,
                                   extract_chains_biotite, generate_pdbs_csv,
-                                  get_pdbs_logits, load_IF1_model,
-                                  sample_from_df_logits, write_fasta_to_dir)
+                                  get_pdbs_logits, load_model,
+                                  sample_from_df_logits, write_fasta_to_dir,
+                                  visualize_mutations)
 
 log = logging.getLogger(__name__)
 
@@ -413,10 +414,7 @@ def main(args):
 
     # Load AntiFold or ESM-IF1 model
     # Infer model from file path
-    if not args.model_path:
-        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        args.model_path = f"{root_dir}/models/model.pt"
-    model = load_IF1_model(args.model_path)
+    model = load_model()
 
     # Get dict with PDBs, sampled sequences and logits / log_odds DataFrame
     pdb_output_dict = sample_pdbs(
