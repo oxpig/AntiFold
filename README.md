@@ -18,36 +18,26 @@ To try AntiFold without installing it, please see our OPIG webserver:
 
 ## Install and run AntiFold
 
-### Download AntiFold code and model
+
+### Install AntiFold with pip (CPU)
+```bash
+conda create --name antifold python=3.10 -y && activate antifold
+pip install antifold
+```
+
+### Install AntiFold with pip (GPU)
+```bash
+conda create --name antifold python=3.10 -y && activate antifold
+conda install -c conda-forge pytorch-gpu
+pip install antifold
+```
+
+### Download and install from Github source (latest release)
 ```bash
 # Download code and model
-git clone https://github.com/oxpig/AntiFold
-cd AntiFold
-wget -P models/ https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt
-```
-
-### Install AntiFold (CPU)
-```bash
-conda create --name antifold python=3.10 -y
-conda activate antifold
-conda install -c pytorch pytorch
-conda install -c pyg pyg -y
-conda install -c conda-forge pip -y
-# Install AntiFold from antifold_code directory
+git clone https://github.com/oxpig/AntiFold && cd AntiFold
+conda create --name antifold python=3.10 -y && conda activate antifold
 pip install .
-pip install torch-geometric==2.4.0
-```
-
-### Install AntiFold (GPU)
-```bash
-conda create --name antifold python=3.10 -y
-conda activate antifold
-conda install -c conda-forge pytorch-gpu
-conda install -c pyg pyg -y
-conda install -c conda-forge pip -y
-# Install AntiFold from antifold_code directory
-pip install .
-pip install torch-geometric==2.4.0
 ```
 
 ### Run AntiFold (inverse-folding probabilities, sample sequences)
@@ -87,6 +77,33 @@ python antifold/main.py \
 python antifold/main.py \
     --pdb_dir data/pdbs \
     --esm_if1_mode
+```
+
+## Example notebook
+Notebook: <a href="https://github.com/oxpig/AntiFold/blob/master/notebook.ipynb">notebook.ipynb</a>
+
+```python
+import antifold
+import antifold.main
+
+# Load model
+model = antifold.main.load_model()
+
+# PDB directory
+pdb_dir = "data/pdbs"
+
+# Assumes first chain heavy, second chain light
+pdbs_csv = antifold.main.generate_pdbs_csv(pdb_dir, max_chains=2)
+
+# Sample from PDBs
+df_logits_list = antifold.main.get_pdbs_logits(
+    model=model,
+    pdbs_csv_or_dataframe=pdbs_csv,
+    pdb_dir=pdb_dir,
+)
+
+# Output log probabilites
+df_logits_list[0]
 ```
 
 ## Input parameters
@@ -157,44 +174,6 @@ PSLKSRVTISVDTSKNQFSLKLSSVTAADTAVYYCAGLYGSPWSNPYWGQGTLVTVSS/V
 LTQPPSVSAAPGQKVTISCSGSSSNIGNNYVSWYQQLPGTAPKRLIYDNNKRPSGIPDRF
 SGSKSGTSATLGITGLQTGDEADYYCGTWDSSLNPVFGGGTKLEIKR
 ...
-```
-## Example notebook
-Notebook: <a href="https://github.com/oxpig/AntiFold/blob/master/notebook.ipynb">notebook.ipynb</a>
-
-```python
-import pandas as pd
-
-# Put IMGT numbered PDBs (Fv only, IMGT position 1-128) to process and load a CSV file with PDB names and heavy/light chains
-# Define the PDB and chains in DataFrame
-pdb_dir = "data/pdbs"
-df_pdbs = pd.read_csv("data/example_pdbs.csv")
-
-# Regions to mutate (IMGT)
-regions_to_mutate = ["CDR1", "CDR2", "CDR3H"]
-
-# Load model
-import antifold.main as antifold
-model = antifold.load_IF1_model("models/model.pt")
-
-# Sample from PDBs, 10 sequences each at temperature 0.50 in regions CDR1, CDR2, CDR3H
-pdb_output_dict = antifold.sample_pdbs(
-                    model,
-                    pdbs_csv_or_dataframe=df_pdbs, # Path to CSV file, or a DataFrame
-                    regions_to_mutate=regions_to_mutate,
-                    pdb_dir="data/pdbs",
-                    sample_n=10,
-                    sampling_temp=0.50,
-                    limit_expected_variation=False
-                    )
-
-# Output dictionary with sequences, and residue probabilities or log-odds
-pdbs = pdb_output_dict.keys()
-
-# Residue log probabilities
-df_logprobs = pdb_output_dict["6y1l_imgt"]["logprobs"]
-
-# Sampled sequences
-fasta_dict = pdb_output_dict["6y1l_imgt"]["sequences"]
 ```
 
 ## Usage
