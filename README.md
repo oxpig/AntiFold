@@ -7,7 +7,7 @@ AntiFold is based on the ESM-IF1 model and is fine-tuned on solved and predicted
 
 - Paper: [arXiv pre-print](https://arxiv.org/abs/2405.03370)
 - Webserver: [OPIG webserver](https://opig.stats.ox.ac.uk/webapps/antifold/)
-- Colab (outdated): [![Open In Colab](images/colab-badge.svg)](https://colab.research.google.com/drive/1TTfgjoZx3mzF5u4e9b4Un9Y7b_rqXc_4)
+- Colab: [![Open In Colab](images/colab-badge.svg)](https://colab.research.google.com/drive/1oEDJCHcwxGBeCiYsCm62_OHBXDHnlhb9)
 - Model: [model.pt](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt)
 - License: [BSD 3-Clause](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/LICENSE)
 
@@ -80,6 +80,8 @@ python antifold/main.py \
 
 ## Jupyter notebook
 Notebook: <a href="https://github.com/oxpig/AntiFold/blob/master/notebook.ipynb">notebook.ipynb</a>
+
+Colab: [![Open In Colab](images/colab-badge.svg)](https://colab.research.google.com/drive/1oEDJCHcwxGBeCiYsCm62_OHBXDHnlhb9)
 
 ```python
 !pip install antifold
