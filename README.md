@@ -220,7 +220,7 @@ options:
   --light_chain LIGHT_CHAIN
                         Ab light chain (for single PDB predictions)
   --antigen_chain ANTIGEN_CHAIN
-                        Antigen chain
+                        Antigen chain (optional)
   --pdbs_csv PDBS_CSV   Input CSV file with PDB names and H/L chains (multi-PDB predictions)
   --pdb_dir PDB_DIR     Directory with input PDB files (multi-PDB predictions)
   --out_dir OUT_DIR     Output directory
