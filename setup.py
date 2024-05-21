@@ -5,7 +5,7 @@ REQUIREMENTS = [i.strip() for i in open("requirements.txt").readlines()]
 
 setup(
     name="antifold",
-    version="0.0.3",
+    version="0.2.0",
     packages=find_packages(),
     description="Inverse folding of antibodies",
     url="https://github.com/Magnushhoie/antifold_web/",
