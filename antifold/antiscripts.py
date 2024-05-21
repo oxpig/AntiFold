@@ -141,10 +141,12 @@ def load_model(checkpoint_path: str = ""):
 
     if not os.path.exists(model_path):
         log.warning(
-            f"Downloading AntiFold model weights to models/model.pt from https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt"
+            f"Downloading AntiFold model weights from https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt to {model_path}"
         )
         url = "https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt"
         filename = model_path
+
+        os.makedirs(f"{root_dir}/models")
         urllib.request.urlretrieve(url, filename)
 
     if not os.path.exists(model_path) and not checkpoint_path == "ESM-IF1":
