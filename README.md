@@ -16,35 +16,6 @@ AntiFold is based on the ESM-IF1 model and is fine-tuned on solved and predicted
 To try AntiFold without installing it, please see our OPIG webserver:
 [https://opig.stats.ox.ac.uk/webapps/antifold/](https://opig.stats.ox.ac.uk/webapps/antifold/)
 
-## Quick-start
-Notebook: <a href="https://github.com/oxpig/AntiFold/blob/master/notebook.ipynb">notebook.ipynb</a>
-
-```python
-!pip install antifold
-
-import antifold
-import antifold.main
-
-# Load model
-model = antifold.main.load_model()
-
-# PDB directory
-pdb_dir = "data/pdbs"
-
-# Assumes first chain heavy, second chain light
-pdbs_csv = antifold.main.generate_pdbs_csv(pdb_dir, max_chains=2)
-
-# Sample from PDBs
-df_logits_list = antifold.main.get_pdbs_logits(
-    model=model,
-    pdbs_csv_or_dataframe=pdbs_csv,
-    pdb_dir=pdb_dir,
-)
-
-# Output log probabilites
-df_logits_list[0]
-```
-
 ## Install and run AntiFold
 
 #### Install AntiFold with pip (CPU)
@@ -105,6 +76,35 @@ python antifold/main.py \
 python antifold/main.py \
     --pdb_dir data/pdbs \
     --esm_if1_mode
+```
+
+## Jupyter notebook
+Notebook: <a href="https://github.com/oxpig/AntiFold/blob/master/notebook.ipynb">notebook.ipynb</a>
+
+```python
+!pip install antifold
+
+import antifold
+import antifold.main
+
+# Load model
+model = antifold.main.load_model()
+
+# PDB directory
+pdb_dir = "data/pdbs"
+
+# Assumes first chain heavy, second chain light
+pdbs_csv = antifold.main.generate_pdbs_csv(pdb_dir, max_chains=2)
+
+# Sample from PDBs
+df_logits_list = antifold.main.get_pdbs_logits(
+    model=model,
+    pdbs_csv_or_dataframe=pdbs_csv,
+    pdb_dir=pdb_dir,
+)
+
+# Output log probabilites
+df_logits_list[0]
 ```
 
 ## Input parameters
