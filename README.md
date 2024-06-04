@@ -271,3 +271,18 @@ IMGT_dict = {
     "FWL4": range(118, 128 + 1),
 }
 ```
+
+## Citing this work
+
+The code and data in this package is based on the following paper <a href="https://arxiv.org/abs/2405.03370">AntiFold</a>. If you use it, please cite:
+
+```tex
+@misc{antifold,
+      title={AntiFold: Improved antibody structure-based design using inverse folding}, 
+      author={Magnus Haraldson Høie and Alissa Hummer and Tobias H. Olsen and Broncio Aguilar-Sanjuan and Morten Nielsen and Charlotte M. Deane},
+      year={2024},
+      eprint={2405.03370},
+      archivePrefix={arXiv},
+      primaryClass={q-bio.BM}
+}
+```
