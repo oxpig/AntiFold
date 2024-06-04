@@ -47,14 +47,19 @@ pip install .
 python antifold/main.py \
     --pdb_file data/pdbs/6y1l_imgt.pdb
 
-# Run AntiFold on an antibody-antigen complex
+# Antibody-antigen complex
 python antifold/main.py \
     --pdb_file data/antibody_antigen/3hfm.pdb \
     --heavy_chain H \
     --light_chain L \
     --antigen_chain Y
 
-# Run AntiFold on a folder of PDB/CIFs
+# Nanobody or single-chain
+python antifold/main.py \
+    --pdb_file data/nanobody/8oi2_imgt.pdb \
+    --nanobody_chain B
+
+# Folder of PDB/CIFs
 # Nb: Assumes first chain heavy, second light
 python antifold/main.py \
     --pdb_dir data/pdbs
@@ -73,7 +78,7 @@ python antifold/main.py \
     --sampling_temp "0.2" \
     --regions "CDR1 CDR2 CDR3"
 
-# Run all chains with ESM-IF1
+# Run all chains with ESM-IF1 model weights
 python antifold/main.py \
     --pdb_dir data/pdbs \
     --esm_if1_mode

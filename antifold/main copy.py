@@ -10,7 +10,6 @@ sys.path.insert(0, ROOT_PATH)
 
 from argparse import ArgumentParser, RawTextHelpFormatter
 
-import numpy as np
 import pandas as pd
 
 from antifold.antiscripts import (df_logits_to_logprobs,
@@ -70,10 +69,6 @@ python antifold/main.py \
         "--pdb_file",
         help="Input PDB file (for single PDB predictions)",
         type=lambda x: is_valid_path(p, x),
-    )
-
-    p.add_argument(
-        "--nanobody_chain", help="Antibody nanobody chain (for single PDB predictions)",
     )
 
     p.add_argument(
@@ -370,18 +365,14 @@ def main(args):
         )
 
     # No chains provided: assume 1st chain is heavy, 2nd is light
+
     # Option 1: Single PDB
     if args.pdb_file:
 
         _pdb = os.path.splitext(os.path.basename(args.pdb_file))[0]
 
-        # Nanobody requires custom_chain_mode
-        if args.nanobody_chain:
-            args.custom_chain_mode = True
-            args.heavy_chain = args.nanobody_chain
-
-        # No chains specified, assume 1st heavy, 2nd light (unless single-chain mode)
-        elif not args.heavy_chain:
+        # No chains specified, assume 1st heavy, 2nd light
+        if not (args.heavy_chain and args.light_chain):
             args.heavy_chain, args.light_chain = extract_chains_biotite(args.pdb_file)[
                 :2
             ]
@@ -394,16 +385,10 @@ def main(args):
             index=[0],
         )
 
-        # Single heavy chain requires custom_chain_mode
-        if args.heavy_chain and not args.light_chain:
-            args.custom_chain_mode = True
-
-        # Antigen chain requires custom_chain_mode
         if args.antigen_chain:
             pdbs_csv.loc[0, "Agchain"] = args.antigen_chain
             args.custom_chain_mode = True
 
-        # PDB dir is the directory of the PDB file
         pdb_dir = os.path.dirname(args.pdb_file)
 
     # Option 2: PDB dir and CSV file

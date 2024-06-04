@@ -43,7 +43,7 @@ class InverseData(torch.utils.data.Dataset):
 
         if self.custom_chain_mode:
             log.info(
-                "NOTE: Custom chain mode enabled. Will run all specified chains (not just heavy/light)."
+                "NOTE: Custom chain mode enabled. Will run specified chain(s)."
             )
 
     def load_coords_HL(
@@ -201,6 +201,10 @@ class InverseData(torch.utils.data.Dataset):
             # Infer heavy and light chain
             if len(chains) >= 2:
                 Hchain, Lchain = chains[0], chains[1]
+            # Infer nanobody
+            else:
+                Hchain = chains[0]
+                Lchain = None
 
             # PDB name with chains
             _pdb_chainsname = _pdb + "_" + "".join(chains)
