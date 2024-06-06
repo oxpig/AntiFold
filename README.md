@@ -1,7 +1,7 @@
 AntiFold
 ==============================
 
-AntiFold predicts sequences which fit into an input antibody variable domain structure. The tool outputs residue log-likelihoods in CSV format, and can sample sequences to a FASTA format directly. Sampled sequences show high structural agreement with experimental structures.
+AntiFold predicts sequences which fit into antibody variable domain structures. The tool outputs residue log-likelihoods in [CSV format](https://github.com/oxpig/AntiFold/blob/master/output/single_pdb/6y1l_imgt.csv), and can sample sequences to a [FASTA format](https://github.com/oxpig/AntiFold/blob/master/output/single_pdb/6y1l_imgt.fasta) directly. Sampled sequences show high structural agreement with experimental structures.
 
 AntiFold is based on the ESM-IF1 model and is fine-tuned on solved and predicted antibody structures from SAbDab and OAS.
 
