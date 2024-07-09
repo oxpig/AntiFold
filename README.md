@@ -18,7 +18,7 @@ To try AntiFold without installing it, please see our OPIG webserver:
 
 ## Install and run AntiFold
 
-#### Download and install from Github source (latest release)
+#### Download and install from Github source (recommended - latest release)
 ```bash
 conda create --name antifold python=3.10 -y && conda activate antifold
 conda install -c conda-forge pytorch
@@ -36,20 +36,6 @@ conda create env -f environment.yml
 python -m pip install antifold
 # or if installing from source
 python -m pip install .
-```
-
-#### Install AntiFold with pip (CPU)
-```bash
-conda create --name antifold python=3.10 -y && activate antifold
-conda install -c conda-forge pytorch
-pip install antifold
-```
-
-#### Install AntiFold with pip (GPU)
-```bash
-conda create --name antifold python=3.10 -y && activate antifold
-conda install -c conda-forge pytorch-gpu
-pip install antifold
 ```
 
 #### Run AntiFold (inverse-folding probabilities, sample sequences)
