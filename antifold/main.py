@@ -261,18 +261,18 @@ def check_valid_input(args):
         )
         sys.exit(1)
 
-    # Check that AntiFold weights are downloaded
-    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    filename = "models/model.pt"
-    model_path = f"{root_dir}/{filename}"
-    if not os.path.exists(model_path):
-        log.warning(
-            f"Downloading AntiFold model weights from https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt to {model_path}"
-        )
-        url = "https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt"
+    # # Check that AntiFold weights are downloaded
+    # root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # filename = "models/model.pt"
+    # model_path = f"{root_dir}/{filename}"
+    # if not os.path.exists(model_path):
+    #     log.warning(
+    #         f"Downloading AntiFold model weights from https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt to {model_path}"
+    #     )
+    #     url = "https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt"
 
-        os.makedirs(f"{root_dir}/models", exist_ok=True)
-        urllib.request.urlretrieve(url, filename)
+    #     os.makedirs(f"{root_dir}/models", exist_ok=True)
+    #     urllib.request.urlretrieve(url, filename)
 
     # Option 1: PDB file, check heavy and light chain
     if args.pdb_file:
