@@ -40,6 +40,14 @@ git clone https://github.com/oxpig/AntiFold && cd AntiFold
 pip install .
 ```
 
+#### Install using environment.yml (for GPU only)
+```bash
+conda create env -f environment.yml
+python -m pip install antifold
+# or if installing from source
+python -m pip install .
+```
+
 #### Run AntiFold (inverse-folding probabilities, sample sequences)
 ```bash
 # Run AntiFold on single PDB/CIF file
@@ -187,7 +195,7 @@ SGSKSGTSATLGITGLQTGDEADYYCGTWDSSLNPVFGGGTKLEIKR
 
 ## Usage
 ```bash
-usage: 
+usage:
     # Predict on example PDBs in folder
 python antifold/main.py \
     --pdb_file data/antibody_antigen/3hfm.pdb \
@@ -278,7 +286,7 @@ The code and data in this package is based on the following paper <a href="https
 
 ```tex
 @misc{antifold,
-      title={AntiFold: Improved antibody structure-based design using inverse folding}, 
+      title={AntiFold: Improved antibody structure-based design using inverse folding},
       author={Magnus Haraldson Høie and Alissa Hummer and Tobias H. Olsen and Broncio Aguilar-Sanjuan and Morten Nielsen and Charlotte M. Deane},
       year={2024},
       eprint={2405.03370},
