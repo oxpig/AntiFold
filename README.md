@@ -26,17 +26,17 @@ git clone https://github.com/oxpig/AntiFold && cd AntiFold
 pip install .
 ```
 
-#### Install using environment.yml (for GPU only)
+GPU only: install using environment.yml
 
-Depending on your CUDA version you may need to change the dependancy `pytorch-cuda=12.1` in the environment.yml file
-
-Detailed instructions on how to correctly install pytorch for your system can be found [here](https://pytorch.org/get-started/locally/)
 ```bash
 conda create env -f environment.yml
 python -m pip install antifold
 # or if installing from source
 python -m pip install .
 ```
+
+Depending on your CUDA version you may need to change the dependency `pytorch-cuda=12.1` in the environment.yml file.
+Detailed instructions on how to correctly install pytorch for your system can be found [here](https://pytorch.org/get-started/locally/)
 
 #### Run AntiFold (inverse-folding probabilities, sample sequences)
 ```bash
