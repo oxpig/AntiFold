@@ -628,7 +628,7 @@ def get_temp_probs(df, t=0.20):
 
 def get_dfs_HL(df):
     """Split df into heavy and light chains"""
-    Hchain, Lchain = df["pdb_chain"].unique()
+    Hchain, Lchain = df["pdb_chain"].unique()[:2] # Assume heavy, light
     return df[df["pdb_chain"] == Hchain], df[df["pdb_chain"] == Lchain]
 
 
@@ -662,15 +662,19 @@ def sample_from_df_logits(
     # Get original H/L sequence
     H_orig, L_orig = get_df_seqs_HL(df_logits)
 
+    # Only sampling from heavy, light chains
+    df_logits_HL = df_logits.iloc[:len(H_orig) + len(L_orig), :]
+    df_logits_HL.name = df_logits.name
+
     # Stats
     seq = "".join(H_orig) + "".join(L_orig)
     _, global_score = get_sequence_sampled_global_score(
-        seq, df_logits, regions_to_mutate
+        seq, df_logits_HL, regions_to_mutate
     )
 
     # Save to FASTA dict
     fasta_dict = OrderedDict()
-    _id = f"{df_logits.name}"
+    _id = f"{df_logits_HL.name}"
     desc = f", score={global_score:.4f}, global_score={global_score:.4f}, regions={regions_to_mutate}, model_name=AntiFold, seed={seed}"
     seq = "".join(H_orig) + "/" + "".join(L_orig)
     fasta_dict[_id] = SeqIO.SeqRecord(Seq(seq), id=_id, name="", description=desc)
@@ -686,7 +690,7 @@ def sample_from_df_logits(
         for n in range(sample_n):
             # Get mutated H/L sequence
             H_mut, L_mut, df_mut = sample_new_sequences_CDR_HL(
-                df_logits,  # DataFrame with residue probabilities
+                df_logits_HL,  # DataFrame with residue probabilities
                 t=t,  # Sampling temperature
                 imgt_regions=regions_to_mutate,  # Region to sample
                 exclude_heavy=exclude_heavy,  # Allow mutations in heavy chain
@@ -705,11 +709,11 @@ def sample_from_df_logits(
 
             seq_mut = "".join(H_mut) + "".join(L_mut)
             score_sampled, global_score = get_sequence_sampled_global_score(
-                seq_mut, df_logits, regions_to_mutate
+                seq_mut, df_logits_HL, regions_to_mutate
             )
 
             # Save to FASTA dict
-            _id = f"{df_logits.name}__{n+1}"
+            _id = f"{df_logits_HL.name}__{n+1}"
             desc = f"T={t:.2f}, sample={n+1}, score={score_sampled:.4f}, global_score={global_score:.4f}, seq_recovery={seq_recovery:.4f}, mutations={n_mut}"
             seq_mut = "".join(H_mut) + "/" + "".join(L_mut)
             fasta_dict[_id] = SeqIO.SeqRecord(
