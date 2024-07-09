@@ -41,6 +41,10 @@ pip install .
 ```
 
 #### Install using environment.yml (for GPU only)
+
+Depending on your CUDA version you may need to change the dependancy `pytorch-cuda=12.1` in the environment.yml file
+
+Detailed instructions on how to correctly install pytorch for your system can be found [here](https://pytorch.org/get-started/locally/)
 ```bash
 conda create env -f environment.yml
 python -m pip install antifold
