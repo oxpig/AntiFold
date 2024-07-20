@@ -276,7 +276,7 @@ def check_valid_input(args):
 
     # Option 1: PDB file, check heavy and light chain
     if args.pdb_file:
-        if not args.heavy_chain:
+        if not args.heavy_chain and not args.nanobody_chain:
             _pdb = os.path.splitext(os.path.basename(args.pdb_file))[0]
             log.warning(
                 f"WARNING: Heavy/light chain(s) not specified for {_pdb}. Assuming 1st chain heavy, 2nd chain light."
