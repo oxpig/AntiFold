@@ -86,8 +86,6 @@ Notebook: <a href="https://github.com/oxpig/AntiFold/blob/master/notebook.ipynb"
 Colab: [![Open In Colab](images/colab-badge.svg)](https://colab.research.google.com/drive/1oEDJCHcwxGBeCiYsCm62_OHBXDHnlhb9)
 
 ```python
-!pip install antifold
-
 import antifold
 import antifold.main
 
