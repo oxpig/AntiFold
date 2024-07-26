@@ -30,8 +30,6 @@ GPU only: install using environment.yml
 
 ```bash
 conda create env -f environment.yml
-python -m pip install antifold
-# or if installing from source
 python -m pip install .
 ```
 
