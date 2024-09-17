@@ -65,7 +65,7 @@ python antifold/main.py \
     --pdb_dir data/antibody_antigen \
     --pdbs_csv data/antibody_antigen.csv
 
-# Sample sequences 10x
+# Sample sequences 10x (paired VH/VL only)
 python antifold/main.py \
     --pdb_file data/pdbs/6y1l_imgt.pdb \
     --heavy_chain H \
