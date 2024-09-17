@@ -1,0 +1,12 @@
+[2024-09-17 16:25:04,719] Running inverse folding on PDB/CIFs ...
+[2024-09-17 16:25:04,719] WARNING: Heavy/light chain(s) not specified for 6y1l_imgt. Assuming 1st chain heavy, 2nd chain light.
+[2024-09-17 16:25:04,719] WARNING: Specify manually with e.g. --heavy_chain H --light_chain L
+[2024-09-17 16:25:04,719] NOTE: ESM-IF1 mode enabled, will use ESM-IF1 weights and run all specified chains
+[2024-09-17 16:25:04,725] 6y1l_imgt: assuming heavy_chain H, light_chain L
+[2024-09-17 16:25:04,726] NOTE: Loading ESM-IF1 weights instead of fine-tuned AntiFold weights
+[2024-09-17 16:28:29,126] Loaded model to cpu.
+[2024-09-17 16:28:29,130] NOTE: Custom chain mode enabled. Will run specified chain(s).
+[2024-09-17 16:28:29,130] Reading in (1) PDBs from DataFrame
+[2024-09-17 16:28:29,157] Predicting batch 1/1: PDBs 1-1 out of 1 total
+[2024-09-17 16:28:29,932] Saving 1 CSVs to output/esmif1
+[2024-09-17 16:28:29,934] Writing 6y1l_imgt_HL per-residue log probs CSV to output/esmif1/6y1l_imgt_HL.csv

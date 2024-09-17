@@ -341,9 +341,9 @@ def check_valid_input(args):
         if args.out_dir == "antifold_output":
             args.out_dir = "esmif1_output"
 
-        log.info(
-            f"NOTE: ESM-IF1 mode enabled, will use ESM-IF1 weights and run all specified chains"
-        )
+        #log.info(
+        #    f"NOTE: ESM-IF1 mode enabled, will use ESM-IF1 weights and run all specified chains"
+        #)
 
 
 def main(args):
@@ -432,7 +432,7 @@ def main(args):
 
     # Load AntiFold or ESM-IF1 model
     # Infer model from file path
-    model = load_model()
+    model = load_model(args.model_path)
 
     # Get dict with PDBs, sampled sequences and logits / log_odds DataFrame
     pdb_output_dict = sample_pdbs(

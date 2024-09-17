@@ -1,0 +1,9 @@
+[2024-09-17 16:25:01,224] Running inverse folding on PDB/CIFs ...
+[2024-09-17 16:25:01,225] WARNING: Heavy/light chain(s) not specified for 6y1l_imgt. Assuming 1st chain heavy, 2nd chain light.
+[2024-09-17 16:25:01,225] WARNING: Specify manually with e.g. --heavy_chain H --light_chain L
+[2024-09-17 16:25:01,230] 6y1l_imgt: assuming heavy_chain H, light_chain L
+[2024-09-17 16:25:01,902] Loaded model to cpu.
+[2024-09-17 16:25:01,905] Reading in (1) PDBs from DataFrame
+[2024-09-17 16:25:01,930] Predicting batch 1/1: PDBs 1-1 out of 1 total
+[2024-09-17 16:25:02,823] Saving 1 CSVs to output/antifold
+[2024-09-17 16:25:02,824] Writing 6y1l_imgt_HL per-residue log probs CSV to output/antifold/6y1l_imgt_HL.csv
