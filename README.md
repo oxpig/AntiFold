@@ -29,7 +29,7 @@ pip install .
 GPU only: install using environment.yml
 
 ```bash
-conda create env -f environment.yml
+conda env create -f environment.yml
 python -m pip install .
 ```
 
