@@ -215,7 +215,7 @@ def sample_pdbs(
         batch_size=batch_size,
         extract_embeddings=extract_embeddings,
         custom_chain_mode=custom_chain_mode,
-        seed=42,
+        seed=seed,
         num_threads=num_threads,
     )
 
@@ -231,6 +231,7 @@ def sample_pdbs(
                 regions_to_mutate=regions_to_mutate,
                 limit_expected_variation=False,
                 verbose=True,
+                seed=seed,
             )
 
             pdb_output_dict[df_logits.name] = {
