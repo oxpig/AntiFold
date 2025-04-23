@@ -66,6 +66,7 @@ python antifold/main.py \
     --pdbs_csv data/antibody_antigen.csv
 
 # Sample sequences 10x (paired VH/VL only)
+# Note: Requires IMGT numbered PDBs (e.g. from SAbDab or numbered with ANARCI)
 python antifold/main.py \
     --pdb_file data/pdbs/6y1l_imgt.pdb \
     --heavy_chain H \
