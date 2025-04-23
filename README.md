@@ -239,28 +239,37 @@ IMGT_dict = {
     "all": range(1, 128 + 1),
     "allH": range(1, 128 + 1),
     "allL": range(1, 128 + 1),
-    "FWH": list(range(1, 26 + 1)) + list(range(40, 55 + 1)) + list(range(66, 104 + 1)),
-    "FWL": list(range(1, 26 + 1)) + list(range(40, 55 + 1)) + list(range(66, 104 + 1)),
-    "CDRH": list(range(27, 39)) + list(range(56, 65 + 1)) + list(range(105, 117 + 1)),
-    "CDRL": list(range(27, 39)) + list(range(56, 65 + 1)) + list(range(105, 117 + 1)),
+
+    "FWH": list(range(1, 26 + 1)) + list(range(39, 55 + 1)) + list(range(66, 104 + 1)) + list(range(118, 128 + 1)),
+    "FWL": list(range(1, 26 + 1)) + list(range(39, 55 + 1)) + list(range(66, 104 + 1)) + list(range(118, 128 + 1)),
+
+    "CDRH": list(range(27, 38 + 1)) + list(range(56, 65 + 1)) + list(range(105, 117 + 1)),
+    "CDRL": list(range(27, 38 + 1)) + list(range(56, 65 + 1)) + list(range(105, 117 + 1)),
+
     "FW1": range(1, 26 + 1),
     "FWH1": range(1, 26 + 1),
     "FWL1": range(1, 26 + 1),
-    "CDR1": range(27, 39),
-    "CDRH1": range(27, 39),
-    "CDRL1": range(27, 39),
-    "FW2": range(40, 55 + 1),
-    "FWH2": range(40, 55 + 1),
-    "FWL2": range(40, 55 + 1),
+
+    "CDR1": range(27, 38 + 1),
+    "CDRH1": range(27, 38 + 1),
+    "CDRL1": range(27, 38 + 1),
+
+    "FW2": range(39, 55 + 1),
+    "FWH2": range(39, 55 + 1),
+    "FWL2": range(39, 55 + 1),
+
     "CDR2": range(56, 65 + 1),
     "CDRH2": range(56, 65 + 1),
     "CDRL2": range(56, 65 + 1),
+
     "FW3": range(66, 104 + 1),
     "FWH3": range(66, 104 + 1),
     "FWL3": range(66, 104 + 1),
+
     "CDR3": range(105, 117 + 1),
     "CDRH3": range(105, 117 + 1),
     "CDRL3": range(105, 117 + 1),
+
     "FW4": range(118, 128 + 1),
     "FWH4": range(118, 128 + 1),
     "FWL4": range(118, 128 + 1),
