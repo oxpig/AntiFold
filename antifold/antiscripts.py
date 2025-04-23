@@ -32,28 +32,37 @@ IMGT_dict = {
     "all": range(1, 128 + 1),
     "allH": range(1, 128 + 1),
     "allL": range(1, 128 + 1),
-    "FWH": list(range(1, 26 + 1)) + list(range(40, 55 + 1)) + list(range(66, 104 + 1)),
-    "FWL": list(range(1, 26 + 1)) + list(range(40, 55 + 1)) + list(range(66, 104 + 1)),
-    "CDRH": list(range(27, 39)) + list(range(56, 65 + 1)) + list(range(105, 117 + 1)),
-    "CDRL": list(range(27, 39)) + list(range(56, 65 + 1)) + list(range(105, 117 + 1)),
+
+    "FWH": list(range(1, 26 + 1)) + list(range(39, 55 + 1)) + list(range(66, 104 + 1)) + list(range(118, 128 + 1)),
+    "FWL": list(range(1, 26 + 1)) + list(range(39, 55 + 1)) + list(range(66, 104 + 1)) + list(range(118, 128 + 1)),
+
+    "CDRH": list(range(27, 38 + 1)) + list(range(56, 65 + 1)) + list(range(105, 117 + 1)),
+    "CDRL": list(range(27, 38 + 1)) + list(range(56, 65 + 1)) + list(range(105, 117 + 1)),
+
     "FW1": range(1, 26 + 1),
     "FWH1": range(1, 26 + 1),
     "FWL1": range(1, 26 + 1),
-    "CDR1": range(27, 39),
-    "CDRH1": range(27, 39),
-    "CDRL1": range(27, 39),
-    "FW2": range(40, 55 + 1),
-    "FWH2": range(40, 55 + 1),
-    "FWL2": range(40, 55 + 1),
+
+    "CDR1": range(27, 38 + 1),
+    "CDRH1": range(27, 38 + 1),
+    "CDRL1": range(27, 38 + 1),
+
+    "FW2": range(39, 55 + 1),
+    "FWH2": range(39, 55 + 1),
+    "FWL2": range(39, 55 + 1),
+
     "CDR2": range(56, 65 + 1),
     "CDRH2": range(56, 65 + 1),
     "CDRL2": range(56, 65 + 1),
+
     "FW3": range(66, 104 + 1),
     "FWH3": range(66, 104 + 1),
     "FWL3": range(66, 104 + 1),
+
     "CDR3": range(105, 117 + 1),
     "CDRH3": range(105, 117 + 1),
     "CDRL3": range(105, 117 + 1),
+
     "FW4": range(118, 128 + 1),
     "FWH4": range(118, 128 + 1),
     "FWL4": range(118, 128 + 1),
@@ -377,6 +386,19 @@ def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader):
         df_logits.insert(4, "pdb_pos", positions)
         df_logits.insert(5, "perplexity", perplexity)
 
+        # Add IMGT_dict
+        df_logits.insert(6, "region", "")
+        for region in [
+            "CDRH1", "CDRH2", "CDRH3",
+            "CDRL1", "CDRL2", "CDRL3",
+            "FWH1", "FWH2", "FWH3", "FWH4",
+            "FWL1", "FWL2", "FWL3", "FWL4",
+            ]:
+            mask = df_logits["pdb_pos"].isin(IMGT_dict[region])
+            df_logits.loc[mask, "region"] = region
+
+        # IMGT_dict = get_imgt_dict(pdb_chainsname)
+
         # Skip if not IMGT numbered - 10 never found in H-chain IMGT numbered PDBs
         Hchain = pdb_chains[0]
         Hpos = positions[pdb_chains == Hchain]
@@ -497,6 +519,8 @@ def calc_pos_perplexity(df):
     return perplexities.numpy()
 
 
+
+
 def sample_new_sequences_CDR_HL(
     df,
     t=0.20,
@@ -595,16 +619,17 @@ def pdb_posins_to_pos(pdb_posins):
 def get_imgt_mask(df, imgt_regions=["CDR1", "CDR2", "CDR3"]):
     """Returns e.g. CDR1+2+3 mask"""
 
-    positions = pdb_posins_to_pos(df["pdb_posins"])
-    region_pos_list = list()
 
-    for region in imgt_regions:
-        if str(region) not in IMGT_dict.keys():
-            region_pos_list.extend(region)
-        else:
-            region_pos_list.extend(list(IMGT_dict[region]))
+    region_map = df["region"].map(
+        {
+            "CDRH1": "CDR1", "CDRH2": "CDR2", "CDRH3": "CDR3",
+            "CDRL1": "CDR1", "CDRL2": "CDR2", "CDRL3": "CDR3",
+            "FWH1": "FW1", "FWH2": "FW2", "FWH3": "FW3", "FWH4": "FW4",
+            "FWL1": "FW1", "FWL2": "FW2", "FWL3": "FW3", "FWL4": "FW4"
+            }
+    )
 
-    region_mask = pd.Series(positions).isin(region_pos_list).values
+    region_mask = region_map.isin(imgt_regions).values
 
     return region_mask
 
