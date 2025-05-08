@@ -355,6 +355,8 @@ class CoordBatchConverter_mask_gpu(BatchConverter):
 
         # check for cuda
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.backends.mps.is_available():
+            device = "mps"
 
         if device == torch.device("cuda"):  # MH
             coords = coords.type(torch.float32).to(device)

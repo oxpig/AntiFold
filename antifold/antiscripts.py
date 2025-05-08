@@ -115,6 +115,8 @@ def load_IF1_checkpoint(model, checkpoint_path: str = ""):
 
     # Check for CPU/GPU load
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.backends.mps.is_available():
+        device = "mps"
     checkpoint_dict = torch.load(checkpoint_path, map_location=torch.device(device))
 
     # PYL checkpoint ?
@@ -183,6 +185,8 @@ def load_model(checkpoint_path: str = ""):
 
     # Send to CPU/GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.backends.mps.is_available():
+        device = "mps"
     _ = model.to(device)
     log.info(f"Loaded model to {device}.")
 
@@ -275,6 +279,7 @@ def dataset_dataloader_to_predictions_list(
     if dataloader.dataset is not dataset:
         raise ValueError("Dataloader and dataset must match to align samples!")
 
+    start = time()
     # Get all batch predictions
     all_seqprobs_list = []
     all_embeddings_list = []
@@ -302,6 +307,15 @@ def dataset_dataloader_to_predictions_list(
 
         # Test forward
         with torch.no_grad():
+
+            if torch.backends.mps.is_available():
+                device = "mps"
+                coords = coords.to(device)
+                padding_mask = padding_mask.to(device)
+                confidence = confidence.to(device)
+                model = model.to(device)
+                tokens = tokens.to(device)
+
             prev_output_tokens = tokens[:, :-1]
             logits, extra = model.forward(  # bs x 35 x seq_len, exlude bos, eos
                 coords,
