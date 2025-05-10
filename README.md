@@ -11,6 +11,19 @@ AntiFold is based on the ESM-IF1 model and is fine-tuned on solved and predicted
 - Model: [model.pt](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt)
 - License: [BSD 3-Clause](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/LICENSE)
 
+## Features
+- Antibody (+ antigen) probabilities and sequence sampling
+- Nanobody (+ antigen) probabilities and sequence sampling
+- Supports use of AntiFold fine-tuned weights and ESM-IF1 pre-trained weights (See --esm_if1_mode)
+- Extraction of per-residue inverse-folding embeddings
+- GPU and MacBook GPU (MPS) accelerated predictions
+
+## Input
+- Input should be either a paired variable domain structure (VH/VL) antibody or nanobody (VHH) (--nanobody_mode)
+- AntiFold assumes the first PDB chain is the heavy chain, and second the light chain, unless manually specified by the user (See --pdbs_csv, --heavy_chain, --light_chain options)
+- Antigen chains can optionally be specified. We recommend only including a single, ideally small, antigen chain. (See --pdbs_csv or --antigen_chain options)
+- Sequence sampling assumes PDBs have been IMGT numbered. You can find IMGT numbered PDBs on [SAbDab](https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab), or re-number PDBs with [ANARCI](https://github.com/oxpig/ANARCI)
+
 ## Webserver
 
 To try AntiFold without installing it, please see our OPIG webserver:
