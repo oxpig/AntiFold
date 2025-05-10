@@ -174,6 +174,13 @@ python antifold/main.py \
     )
 
     p.add_argument(
+        "--nanobody_mode",
+        default=False,
+        action="store_true",
+        help="Nanobody mode",
+    )
+
+    p.add_argument(
         "--esm_if1_mode",
         default=False,
         action="store_true",
@@ -201,6 +208,7 @@ def sample_pdbs(
     batch_size=1,
     extract_embeddings=False,
     custom_chain_mode=False,
+    nanobody_mode=False,
     num_threads=0,
     seed=42,
     save_flag=False,
@@ -215,6 +223,7 @@ def sample_pdbs(
         batch_size=batch_size,
         extract_embeddings=extract_embeddings,
         custom_chain_mode=custom_chain_mode,
+        nanobody_mode=nanobody_mode,
         seed=seed,
         num_threads=num_threads,
     )
@@ -380,6 +389,7 @@ def main(args):
         # Nanobody requires custom_chain_mode
         if args.nanobody_chain:
             args.custom_chain_mode = True
+            args.nanobody_mode = True
             args.heavy_chain = args.nanobody_chain
 
         # No chains specified, assume 1st heavy, 2nd light (unless single-chain mode)
@@ -450,6 +460,7 @@ def main(args):
         batch_size=args.batch_size,
         extract_embeddings=args.extract_embeddings,
         custom_chain_mode=args.custom_chain_mode,
+        nanobody_mode=args.nanobody_mode,
         num_threads=args.num_threads,
         seed=args.seed,
         save_flag=True,

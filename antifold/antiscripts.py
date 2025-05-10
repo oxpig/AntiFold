@@ -338,7 +338,7 @@ def dataset_dataloader_to_predictions_list(
     return all_seqprobs_list, all_embeddings_list
 
 
-def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader):
+def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader, nanobody_mode=False):
     """PDB preds list to PDB DataFrames"""
 
     # Check that dataloader and dataset match, and no random shuffling
@@ -386,25 +386,38 @@ def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader):
         df_logits.insert(4, "pdb_pos", positions)
         df_logits.insert(5, "perplexity", perplexity)
 
-        # Add IMGT_dict
+        # Add IMGT regions to heavy (and light) chains
         df_logits.insert(6, "region", "")
-        for region in [
-            "CDRH1", "CDRH2", "CDRH3",
-            "CDRL1", "CDRL2", "CDRL3",
-            "FWH1", "FWH2", "FWH3", "FWH4",
-            "FWL1", "FWL2", "FWL3", "FWL4",
-            ]:
-            mask = df_logits["pdb_pos"].isin(IMGT_dict[region])
-            df_logits.loc[mask, "region"] = region
 
-        # IMGT_dict = get_imgt_dict(pdb_chainsname)
+        first_2_chains = pd.unique(df_logits["pdb_chain"])[:2]
+        for i, chain in enumerate(first_2_chains):
+
+            # Add heavy chain IMGT regions
+            if i == 0:
+                df_H = df_logits[df_logits["pdb_chain"] == chain]
+                for region in [
+                    "CDRH1", "CDRH2", "CDRH3",
+                    "FWH1", "FWH2", "FWH3", "FWH4",
+                ]:
+                    mask = df_H["pdb_pos"].isin(IMGT_dict[region])
+                    df_logits.loc[df_H.index[mask], "region"] = region
+
+            # Add light chain IMGT regions
+            elif i == 1 and not nanobody_mode:
+                df_L = df_logits[df_logits["pdb_chain"] == chain]
+                for region in [
+                    "CDRL1", "CDRL2", "CDRL3",
+                    "FWL1", "FWL2", "FWL3", "FWL4",
+                ]:
+                    mask = df_L["pdb_pos"].isin(IMGT_dict[region])
+                    df_logits.loc[df_L.index[mask], "region"] = region
 
         # Skip if not IMGT numbered - 10 never found in H-chain IMGT numbered PDBs
         Hchain = pdb_chains[0]
         Hpos = positions[pdb_chains == Hchain]
         if 10 in Hpos and not dataset.custom_chain_mode:
             log.error(
-                f"WARNING: PDB {pdb_name} seems to not be IMGT numbered! Output probabilities may be affected. See https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabpred/anarci/"
+                f"WARNING: PDB {pdb_name} seems to not be IMGT numbered! Sequence sampling on IMGT regions may not be correct. See https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabpred/anarci/"
             )
         # Limit to IMGT positions only (only ones trained on)
         # imgt_mask = get_imgt_mask(df_logits, imgt_regions=["all"])
@@ -462,6 +475,7 @@ def get_pdbs_logits(
     batch_size=1,
     extract_embeddings=False,
     custom_chain_mode=False,
+    nanobody_mode=False,
     num_threads=0,
     save_flag=False,
     float_format="%.4f",
@@ -492,7 +506,7 @@ def get_pdbs_logits(
         extract_embeddings=extract_embeddings,
     )
     df_logits_list = predictions_list_to_df_logits_list(
-        predictions_list, dataset, dataloader
+        predictions_list, dataset, dataloader, nanobody_mode=nanobody_mode
     )
 
     # Save df_logits to CSVs
