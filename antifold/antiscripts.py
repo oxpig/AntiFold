@@ -387,7 +387,7 @@ def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader, n
         df_logits.insert(5, "perplexity", perplexity)
 
         # Add IMGT regions to heavy (and light) chains
-        df_logits.insert(6, "region", "")
+        df_logits.insert(6, "assumed_region", "")
 
         first_2_chains = pd.unique(df_logits["pdb_chain"])[:2]
         for i, chain in enumerate(first_2_chains):
@@ -400,7 +400,7 @@ def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader, n
                     "FWH1", "FWH2", "FWH3", "FWH4",
                 ]:
                     mask = df_H["pdb_pos"].isin(IMGT_dict[region])
-                    df_logits.loc[df_H.index[mask], "region"] = region
+                    df_logits.loc[df_H.index[mask], "assumed_region"] = region
 
             # Add light chain IMGT regions
             elif i == 1 and not nanobody_mode:
@@ -410,7 +410,7 @@ def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader, n
                     "FWL1", "FWL2", "FWL3", "FWL4",
                 ]:
                     mask = df_L["pdb_pos"].isin(IMGT_dict[region])
-                    df_logits.loc[df_L.index[mask], "region"] = region
+                    df_logits.loc[df_L.index[mask], "assumed_region"] = region
 
         # Skip if not IMGT numbered - 10 never found in H-chain IMGT numbered PDBs
         Hchain = pdb_chains[0]
@@ -713,17 +713,67 @@ def pdb_posins_to_pos(pdb_posins):
 def get_imgt_mask(df, imgt_regions=["CDR1", "CDR2", "CDR3"]):
     """Returns e.g. CDR1+2+3 mask"""
 
+    # region_map = df["assumed_region"].map(
+    #     {
+    #         "CDRH1": "CDR1", "CDRH2": "CDR2", "CDRH3": "CDR3",
+    #         "CDRL1": "CDR1", "CDRL2": "CDR2", "CDRL3": "CDR3",
+    #         "FWH1": "FW1", "FWH2": "FW2", "FWH3": "FW3", "FWH4": "FW4",
+    #         "FWL1": "FW1", "FWL2": "FW2", "FWL3": "FW3", "FWL4": "FW4"
+    #         }
+    # )
 
-    region_map = df["region"].map(
-        {
-            "CDRH1": "CDR1", "CDRH2": "CDR2", "CDRH3": "CDR3",
-            "CDRL1": "CDR1", "CDRL2": "CDR2", "CDRL3": "CDR3",
-            "FWH1": "FW1", "FWH2": "FW2", "FWH3": "FW3", "FWH4": "FW4",
-            "FWL1": "FW1", "FWL2": "FW2", "FWL3": "FW3", "FWL4": "FW4"
-            }
-    )
+    # df regions are chain specific (CDRH1, CDRL1, etc)
+    # User-specific imgt_regions can be non-chain specific (CDR1, CDR2, CDR3)
+    # -> Map to chain-specific regions
 
-    region_mask = region_map.isin(imgt_regions).values
+    S_regions = pd.Series(imgt_regions)
+    chosen_regions = []
+    for regions in S_regions:
+        if regions == "CDR1":
+            chosen_regions.extend(["CDRH1", "CDRL1"])
+        elif regions == "CDR2":
+            chosen_regions.extend(["CDRH2", "CDRL2"])
+        elif regions == "CDR3":
+            chosen_regions.extend(["CDRH3", "CDRL3"])
+        elif regions == "FW1":
+            chosen_regions.extend(["FWH1", "FWL1"])
+        elif regions == "FW2":
+            chosen_regions.extend(["FWH2", "FWL2"])
+        elif regions == "FW3":
+            chosen_regions.extend(["FWH3", "FWL3"])
+        elif regions == "FW4":
+            chosen_regions.extend(["FWH4", "FWL4"])
+        elif regions == "CDRH":
+            chosen_regions.extend(["CDRH1", "CDRH2", "CDRH3"])
+        elif regions == "CDRL":
+            chosen_regions.extend(["CDRL1", "CDRL2", "CDRL3"])
+        elif regions == "all":
+            chosen_regions.extend(
+                [
+                    "CDRH1", "CDRH2", "CDRH3",
+                    "CDRL1", "CDRL2", "CDRL3",
+                    "FWH1", "FWH2", "FWH3", "FWH4",
+                    "FWL1", "FWL2", "FWL3", "FWL4"
+                ]
+            )
+        elif regions == "allH":
+            chosen_regions.extend(
+                [
+                    "CDRH1", "CDRH2", "CDRH3",
+                    "FWH1", "FWH2", "FWH3", "FWH4"
+                ]
+            )
+        elif regions == "allL":
+            chosen_regions.extend(
+                [
+                    "CDRL1", "CDRL2", "CDRL3",
+                    "FWL1", "FWL2", "FWL3", "FWL4"
+                ]
+            )
+        else:
+            chosen_regions.append(regions)
+
+    region_mask = df["assumed_region"].isin(chosen_regions).values
 
     return region_mask
 
