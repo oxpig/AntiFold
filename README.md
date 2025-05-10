@@ -5,7 +5,7 @@ AntiFold predicts sequences which fit into antibody variable domain structures. 
 
 AntiFold is based on the ESM-IF1 model and is fine-tuned on solved and predicted antibody structures from SAbDab and OAS.
 
-- Paper: [arXiv pre-print](https://arxiv.org/abs/2405.03370)
+- Paper: [Bioinformatics Advances]([https://arxiv.org/abs/2405.03370](https://academic.oup.com/bioinformaticsadvances/article/5/1/vbae202/8090019))
 - Webserver: [OPIG webserver](https://opig.stats.ox.ac.uk/webapps/antifold/)
 - Colab: [![Open In Colab](images/colab-badge.svg)](https://colab.research.google.com/drive/1oEDJCHcwxGBeCiYsCm62_OHBXDHnlhb9)
 - Model: [model.pt](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt)
@@ -14,8 +14,9 @@ AntiFold is based on the ESM-IF1 model and is fine-tuned on solved and predicted
 ## Features
 - Antibody (+ antigen) probabilities and sequence sampling
 - Nanobody (+ antigen) probabilities and sequence sampling
+- Sampling of residues from specified IMGT regions. Nb: assumes antibody is IMGT numbered! (See --num_seq_per_target and --regions)
 - Supports use of AntiFold fine-tuned weights and ESM-IF1 pre-trained weights (See --esm_if1_mode)
-- Extraction of per-residue inverse-folding embeddings
+- Extraction of per-residue inverse-folding embeddings (See --extract_embeddings)
 - GPU and MacBook GPU (MPS) accelerated predictions
 
 ## Input
