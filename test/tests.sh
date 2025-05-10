@@ -6,7 +6,7 @@ if [[ ${TRACE-0} == "1" ]]; then
   set -o xtrace
 fi
 
-NUM_TESTS=7
+NUM_TESTS=8
 
 # Run AntiFold on single PDB/CIF file
 # Nb: Assumes first chain heavy, second chain light
@@ -55,3 +55,14 @@ echo -e "\n### Test 7 / $NUM_TESTS ###"
 python antifold/main.py \
     --pdb_dir data/pdbs \
     --esm_if1_mode
+
+# Nanobody-antigen sequence sampling
+echo -e "\n### Test 8 / $NUM_TESTS ###"
+python antifold/main.py \
+    --pdb_file data/nanobody/nanobody_antigen_9hzj_imgt.pdb \
+    --nanobody_chain A \
+    --antigen_chain B \
+    --num_seq_per_target 10 \
+    --sampling_temp "0.2" \
+    --regions "CDRH2 CDRH3"
+

@@ -352,7 +352,7 @@ def dataset_dataloader_to_predictions_list(
     return all_seqprobs_list, all_embeddings_list
 
 
-def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader):
+def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader, nanobody_mode=False):
     """PDB preds list to PDB DataFrames"""
 
     # Check that dataloader and dataset match, and no random shuffling
@@ -400,25 +400,38 @@ def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader):
         df_logits.insert(4, "pdb_pos", positions)
         df_logits.insert(5, "perplexity", perplexity)
 
-        # Add IMGT_dict
-        df_logits.insert(6, "region", "")
-        for region in [
-            "CDRH1", "CDRH2", "CDRH3",
-            "CDRL1", "CDRL2", "CDRL3",
-            "FWH1", "FWH2", "FWH3", "FWH4",
-            "FWL1", "FWL2", "FWL3", "FWL4",
-            ]:
-            mask = df_logits["pdb_pos"].isin(IMGT_dict[region])
-            df_logits.loc[mask, "region"] = region
+        # Add IMGT regions to heavy (and light) chains
+        df_logits.insert(6, "assumed_region", "")
 
-        # IMGT_dict = get_imgt_dict(pdb_chainsname)
+        first_2_chains = pd.unique(df_logits["pdb_chain"])[:2]
+        for i, chain in enumerate(first_2_chains):
+
+            # Add heavy chain IMGT regions
+            if i == 0:
+                df_H = df_logits[df_logits["pdb_chain"] == chain]
+                for region in [
+                    "CDRH1", "CDRH2", "CDRH3",
+                    "FWH1", "FWH2", "FWH3", "FWH4",
+                ]:
+                    mask = df_H["pdb_pos"].isin(IMGT_dict[region])
+                    df_logits.loc[df_H.index[mask], "assumed_region"] = region
+
+            # Add light chain IMGT regions
+            elif i == 1 and not nanobody_mode:
+                df_L = df_logits[df_logits["pdb_chain"] == chain]
+                for region in [
+                    "CDRL1", "CDRL2", "CDRL3",
+                    "FWL1", "FWL2", "FWL3", "FWL4",
+                ]:
+                    mask = df_L["pdb_pos"].isin(IMGT_dict[region])
+                    df_logits.loc[df_L.index[mask], "assumed_region"] = region
 
         # Skip if not IMGT numbered - 10 never found in H-chain IMGT numbered PDBs
         Hchain = pdb_chains[0]
         Hpos = positions[pdb_chains == Hchain]
         if 10 in Hpos and not dataset.custom_chain_mode:
             log.error(
-                f"WARNING: PDB {pdb_name} seems to not be IMGT numbered! Output probabilities may be affected. See https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabpred/anarci/"
+                f"WARNING: PDB {pdb_name} seems to not be IMGT numbered! Sequence sampling on IMGT regions may not be correct. See https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabpred/anarci/"
             )
         # Limit to IMGT positions only (only ones trained on)
         # imgt_mask = get_imgt_mask(df_logits, imgt_regions=["all"])
@@ -476,6 +489,7 @@ def get_pdbs_logits(
     batch_size=1,
     extract_embeddings=False,
     custom_chain_mode=False,
+    nanobody_mode=False,
     num_threads=0,
     save_flag=False,
     float_format="%.4f",
@@ -506,7 +520,7 @@ def get_pdbs_logits(
         extract_embeddings=extract_embeddings,
     )
     df_logits_list = predictions_list_to_df_logits_list(
-        predictions_list, dataset, dataloader
+        predictions_list, dataset, dataloader, nanobody_mode=nanobody_mode
     )
 
     # Save df_logits to CSVs
@@ -624,6 +638,86 @@ def sample_new_sequences_CDR_HL(
 
     return H_sampled, L_sampled, df
 
+def sample_new_sequences_CDR_H(
+    df,
+    t=0.20,
+    imgt_regions=["CDR1", "CDR2", "CDR3"],
+    exclude_heavy=False,
+    exclude_light=False,
+    return_mutation_df=False,
+    limit_expected_variation=True,
+    verbose=False,
+):
+    """Samples new sequences only varying at H/L CDRs"""
+
+    def _sample_cdr_seq(df, imgt_regions, t=0.20):
+        """DF to sampled seq"""
+
+        # CDR1+2+3 mask
+        region_mask = get_imgt_mask(df, imgt_regions)
+
+        # Probabilities after scaling with temp
+        probs = get_temp_probs(df, t=t)
+        probs_cdr = probs[region_mask]
+
+        # Sampled tokens and sequence
+        sampled_tokens = torch.multinomial(probs_cdr, 1).squeeze(-1)
+        sampled_seq = np.array([amino_list[i] for i in sampled_tokens])
+
+        return sampled_seq
+
+    # Prepare to sample new H + L sequences
+    df_H = get_dfs_H(df)
+
+    # Get H, sampling only for (CDR1, 2, 3)
+    H_sampled = get_df_seq(df_H)
+
+    regions = [region for region in imgt_regions if "L" not in region]
+    if len(regions) > 0 and not exclude_heavy:
+        region_mask = get_imgt_mask(df_H, regions)
+        H_sampled[region_mask] = _sample_cdr_seq(df_H, regions, t=t)
+
+    # Use for later
+    sampled_seq = H_sampled
+    region_mask = get_imgt_mask(df, imgt_regions)
+
+    # Mismatches vs predicted (CDR only)
+    pred_seq = get_df_seq_pred(df_H)
+    mismatch_idxs_pred_cdr = np.where(
+        (sampled_seq[region_mask] != pred_seq[region_mask])
+    )[0]
+
+    # Mismatches vs original (all)
+    orig_seq = get_df_seq(df_H)
+    mismatch_idxs_orig = np.where((sampled_seq != orig_seq))[0]
+
+    # Limit mutations (backmutate) to as many expected from temperature sampling
+    if limit_expected_variation:
+        backmutate = len(mismatch_idxs_orig) - len(mismatch_idxs_pred_cdr)
+
+        if backmutate >= 1:
+            backmutate_idxs = np.random.choice(
+                mismatch_idxs_orig, size=backmutate, replace=False
+            )
+            sampled_seq[backmutate_idxs] = orig_seq[backmutate_idxs]
+            H_sampled = sampled_seq[: len(df_H)]
+
+    # Variables for calculating mismatches
+    sampled_seq = H_sampled
+    orig_seq = get_df_seq(df_H)
+
+    # DataFrame with sampled mutations
+    if return_mutation_df:
+        mut_list = np.where(sampled_seq != orig_seq)[0]
+        df_mut = df.loc[
+            mut_list, ["pdb_res", "top_res", "pdb_posins", "pdb_chain"]
+        ].copy()
+        df_mut.insert(1, "aa_sampled", sampled_seq[mut_list])
+
+        return H_sampled, df_mut
+
+    return H_sampled, df
+
 
 def pdb_posins_to_pos(pdb_posins):
     # Convert pos+insertion code to numerical only
@@ -633,17 +727,67 @@ def pdb_posins_to_pos(pdb_posins):
 def get_imgt_mask(df, imgt_regions=["CDR1", "CDR2", "CDR3"]):
     """Returns e.g. CDR1+2+3 mask"""
 
+    # region_map = df["assumed_region"].map(
+    #     {
+    #         "CDRH1": "CDR1", "CDRH2": "CDR2", "CDRH3": "CDR3",
+    #         "CDRL1": "CDR1", "CDRL2": "CDR2", "CDRL3": "CDR3",
+    #         "FWH1": "FW1", "FWH2": "FW2", "FWH3": "FW3", "FWH4": "FW4",
+    #         "FWL1": "FW1", "FWL2": "FW2", "FWL3": "FW3", "FWL4": "FW4"
+    #         }
+    # )
 
-    region_map = df["region"].map(
-        {
-            "CDRH1": "CDR1", "CDRH2": "CDR2", "CDRH3": "CDR3",
-            "CDRL1": "CDR1", "CDRL2": "CDR2", "CDRL3": "CDR3",
-            "FWH1": "FW1", "FWH2": "FW2", "FWH3": "FW3", "FWH4": "FW4",
-            "FWL1": "FW1", "FWL2": "FW2", "FWL3": "FW3", "FWL4": "FW4"
-            }
-    )
+    # df regions are chain specific (CDRH1, CDRL1, etc)
+    # User-specific imgt_regions can be non-chain specific (CDR1, CDR2, CDR3)
+    # -> Map to chain-specific regions
 
-    region_mask = region_map.isin(imgt_regions).values
+    S_regions = pd.Series(imgt_regions)
+    chosen_regions = []
+    for regions in S_regions:
+        if regions == "CDR1":
+            chosen_regions.extend(["CDRH1", "CDRL1"])
+        elif regions == "CDR2":
+            chosen_regions.extend(["CDRH2", "CDRL2"])
+        elif regions == "CDR3":
+            chosen_regions.extend(["CDRH3", "CDRL3"])
+        elif regions == "FW1":
+            chosen_regions.extend(["FWH1", "FWL1"])
+        elif regions == "FW2":
+            chosen_regions.extend(["FWH2", "FWL2"])
+        elif regions == "FW3":
+            chosen_regions.extend(["FWH3", "FWL3"])
+        elif regions == "FW4":
+            chosen_regions.extend(["FWH4", "FWL4"])
+        elif regions == "CDRH":
+            chosen_regions.extend(["CDRH1", "CDRH2", "CDRH3"])
+        elif regions == "CDRL":
+            chosen_regions.extend(["CDRL1", "CDRL2", "CDRL3"])
+        elif regions == "all":
+            chosen_regions.extend(
+                [
+                    "CDRH1", "CDRH2", "CDRH3",
+                    "CDRL1", "CDRL2", "CDRL3",
+                    "FWH1", "FWH2", "FWH3", "FWH4",
+                    "FWL1", "FWL2", "FWL3", "FWL4"
+                ]
+            )
+        elif regions == "allH":
+            chosen_regions.extend(
+                [
+                    "CDRH1", "CDRH2", "CDRH3",
+                    "FWH1", "FWH2", "FWH3", "FWH4"
+                ]
+            )
+        elif regions == "allL":
+            chosen_regions.extend(
+                [
+                    "CDRL1", "CDRL2", "CDRL3",
+                    "FWL1", "FWL2", "FWL3", "FWL4"
+                ]
+            )
+        else:
+            chosen_regions.append(regions)
+
+    region_mask = df["assumed_region"].isin(chosen_regions).values
 
     return region_mask
 
@@ -671,6 +815,12 @@ def get_dfs_HL(df):
     return df[df["pdb_chain"] == Hchain], df[df["pdb_chain"] == Lchain]
 
 
+def get_dfs_H(df):
+    """Split df into heavy and light chains"""
+    Hchain = df["pdb_chain"].unique()[0] # Assume heavy, light
+    return df[df["pdb_chain"] == Hchain]
+
+
 def get_df_seq(df):
     """Get PDB sequence"""
     return df["pdb_res"].values
@@ -686,8 +836,13 @@ def get_df_seqs_HL(df):
     df_H, df_L = get_dfs_HL(df)
     return get_df_seq(df_H), get_df_seq(df_L)
 
+def get_df_seqs_H(df):
+    """Get heavy and light chain sequences"""
+    df_H = get_dfs_H(df)
+    return get_df_seq(df_H)
 
-def sample_from_df_logits(
+
+def sample_from_df_logits_HL(
     df_logits,
     sample_n=1,
     sampling_temp=0.20,
@@ -695,6 +850,7 @@ def sample_from_df_logits(
     exclude_heavy=False,
     exclude_light=False,
     limit_expected_variation=False,
+    nanobody_mode=False,
     verbose=False,
     seed=42,
 ):
@@ -724,12 +880,94 @@ def sample_from_df_logits(
     if not isinstance(sampling_temp, list):
         sampling_temp = [sampling_temp]
 
+    if not nanobody_mode:
+        print("inside")
+        for t in sampling_temp:
+            # Sample sequences n times
+            for n in range(sample_n):
+
+                # Get mutated H/L sequence
+                H_mut, L_mut, df_mut = sample_new_sequences_CDR_HL(
+                    df_logits_HL,  # DataFrame with residue probabilities
+                    t=t,  # Sampling temperature
+                    imgt_regions=regions_to_mutate,  # Region to sample
+                    exclude_heavy=exclude_heavy,  # Allow mutations in heavy chain
+                    exclude_light=exclude_light,  # Allow mutation in light chain
+                    limit_expected_variation=limit_expected_variation,  # Only mutate as many positions are expected from temperature
+                    verbose=verbose,
+                )
+
+                # Original sequence
+                seq_orig = "".join(H_orig) + "".join(L_orig)
+
+                # Sequence recovery and mismatches
+                correct_matches = (H_orig == H_mut).sum() + (L_orig == L_mut).sum()
+                seq_recovery = correct_matches / len(seq_orig)
+                n_mut = (H_orig != H_mut).sum() + (L_orig != L_mut).sum()
+
+                seq_mut = "".join(H_mut) + "".join(L_mut)
+                score_sampled, global_score = get_sequence_sampled_global_score(
+                    seq_mut, df_logits_HL, regions_to_mutate
+                )
+
+                # Save to FASTA dict
+                _id = f"{df_logits_HL.name}__{n+1}"
+                desc = f"T={t:.2f}, sample={n+1}, score={score_sampled:.4f}, global_score={global_score:.4f}, seq_recovery={seq_recovery:.4f}, mutations={n_mut}"
+                seq_mut = "".join(H_mut) + "/" + "".join(L_mut)
+                fasta_dict[_id] = SeqIO.SeqRecord(
+                    Seq(seq_mut), id="", name="", description=desc
+                )
+
+                if verbose:
+                    log.info(f"{_id}: {desc}")
+
+    return fasta_dict
+
+def sample_from_df_logits_H(
+    df_logits,
+    sample_n=1,
+    sampling_temp=0.20,
+    regions_to_mutate=["CDR1", "CDR2", "CDR3"],
+    exclude_heavy=False,
+    exclude_light=False,
+    limit_expected_variation=False,
+    nanobody_mode=False,
+    verbose=False,
+    seed=42,
+):
+    # Get original H/L sequence
+    H_orig = get_df_seqs_H(df_logits)
+
+    # Only sampling from heavy, light chains
+    df_logits_H = df_logits.iloc[:len(H_orig), :]
+    df_logits_H.name = df_logits.name
+
+    # Stats
+    seq = "".join(H_orig)
+    _, global_score = get_sequence_sampled_global_score(
+        seq, df_logits_H, regions_to_mutate
+    )
+
+    # Save to FASTA dict
+    fasta_dict = OrderedDict()
+    _id = f"{df_logits_H.name}"
+    desc = f", score={global_score:.4f}, global_score={global_score:.4f}, regions={regions_to_mutate}, model_name=AntiFold, seed={seed}"
+    seq = "".join(H_orig)
+    fasta_dict[_id] = SeqIO.SeqRecord(Seq(seq), id=_id, name="", description=desc)
+
+    if verbose:
+        log.info(f"{_id}: {desc}")
+
+    if not isinstance(sampling_temp, list):
+        sampling_temp = [sampling_temp]
+
     for t in sampling_temp:
         # Sample sequences n times
         for n in range(sample_n):
+
             # Get mutated H/L sequence
-            H_mut, L_mut, df_mut = sample_new_sequences_CDR_HL(
-                df_logits_HL,  # DataFrame with residue probabilities
+            H_mut, df_mut = sample_new_sequences_CDR_H(
+                df_logits_H,  # DataFrame with residue probabilities
                 t=t,  # Sampling temperature
                 imgt_regions=regions_to_mutate,  # Region to sample
                 exclude_heavy=exclude_heavy,  # Allow mutations in heavy chain
@@ -739,22 +977,22 @@ def sample_from_df_logits(
             )
 
             # Original sequence
-            seq_orig = "".join(H_orig) + "".join(L_orig)
+            seq_orig = "".join(H_orig)
 
             # Sequence recovery and mismatches
-            correct_matches = (H_orig == H_mut).sum() + (L_orig == L_mut).sum()
+            correct_matches = (H_orig == H_mut).sum()
             seq_recovery = correct_matches / len(seq_orig)
-            n_mut = (H_orig != H_mut).sum() + (L_orig != L_mut).sum()
+            n_mut = (H_orig != H_mut).sum()
 
-            seq_mut = "".join(H_mut) + "".join(L_mut)
+            seq_mut = "".join(H_mut)
             score_sampled, global_score = get_sequence_sampled_global_score(
-                seq_mut, df_logits_HL, regions_to_mutate
+                seq_mut, df_logits_H, regions_to_mutate
             )
 
             # Save to FASTA dict
-            _id = f"{df_logits_HL.name}__{n+1}"
+            _id = f"{df_logits_H.name}__{n+1}"
             desc = f"T={t:.2f}, sample={n+1}, score={score_sampled:.4f}, global_score={global_score:.4f}, seq_recovery={seq_recovery:.4f}, mutations={n_mut}"
-            seq_mut = "".join(H_mut) + "/" + "".join(L_mut)
+            seq_mut = "".join(H_mut)
             fasta_dict[_id] = SeqIO.SeqRecord(
                 Seq(seq_mut), id="", name="", description=desc
             )
