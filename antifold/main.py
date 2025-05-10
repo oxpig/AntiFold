@@ -16,7 +16,7 @@ import pandas as pd
 from antifold.antiscripts import (df_logits_to_logprobs,
                                   extract_chains_biotite, generate_pdbs_csv,
                                   get_pdbs_logits, load_model,
-                                  sample_from_df_logits, write_fasta_to_dir,
+                                  sample_from_df_logits_HL, sample_from_df_logits_H, write_fasta_to_dir,
                                   visualize_mutations)
 
 log = logging.getLogger(__name__)
@@ -232,16 +232,31 @@ def sample_pdbs(
         # Sample from output probabilities
         pdb_output_dict = {}
         for df_logits in df_logits_list:
-            # Sample 10 sequences with a temperature of 0.50
-            fasta_dict = sample_from_df_logits(
-                df_logits,
-                sample_n=sample_n,
-                sampling_temp=sampling_temp,
-                regions_to_mutate=regions_to_mutate,
-                limit_expected_variation=False,
-                verbose=True,
-                seed=seed,
-            )
+
+            if nanobody_mode:
+                # Sample 10 sequences with a temperature of 0.50
+                fasta_dict = sample_from_df_logits_H(
+                    df_logits,
+                    sample_n=sample_n,
+                    sampling_temp=sampling_temp,
+                    regions_to_mutate=regions_to_mutate,
+                    limit_expected_variation=False,
+                    nanobody_mode=nanobody_mode,
+                    verbose=True,
+                    seed=seed,
+                )
+            else:
+                # Sample 10 sequences with a temperature of 0.50
+                fasta_dict = sample_from_df_logits_HL(
+                    df_logits,
+                    sample_n=sample_n,
+                    sampling_temp=sampling_temp,
+                    regions_to_mutate=regions_to_mutate,
+                    limit_expected_variation=False,
+                    nanobody_mode=nanobody_mode,
+                    verbose=True,
+                    seed=seed,
+                )
 
             pdb_output_dict[df_logits.name] = {
                 "sequences": fasta_dict,
