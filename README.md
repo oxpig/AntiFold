@@ -292,6 +292,8 @@ IMGT_dict = {
 
 ## Benchmarks
 - [Li, Y., et al. Benchmarking Inverse Folding Models for Antibody CDR Sequence Design, PLOS ONE, 2025](https://doi.org/10.1371/journal.pone.0324566)
+- [Clifford J.N. et al. (2025). AbEpiTope-1.0: Improved antibody target prediction by use of AlphaFold and inverse folding.](https://doi.org/10.1126/sciadv.adu1823)
+
 
 ## Citing this work
 
