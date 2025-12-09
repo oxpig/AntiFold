@@ -290,6 +290,9 @@ IMGT_dict = {
 }
 ```
 
+## Benchmarks
+- [Li, Y., et al. Benchmarking Inverse Folding Models for Antibody CDR Sequence Design, PLOS ONE, 2025](https://doi.org/10.1371/journal.pone.0324566)
+
 ## Citing this work
 
 The code and data in this package is based on the following paper <a href="https://arxiv.org/abs/2405.03370">AntiFold</a>. If you use it, please cite:
