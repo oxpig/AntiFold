@@ -3,7 +3,7 @@ import logging
 import os
 import sys
 import warnings
-import urllib.request
+import urllib.error
 from pathlib import Path
 
 ROOT_PATH = Path(os.path.dirname(__file__)).parent
@@ -27,6 +27,15 @@ from antifold.if1_dataset import InverseData
 log = logging.getLogger(__name__)
 
 amino_list = list("ACDEFGHIKLMNPQRSTVWY")
+
+ANTIFOLD_WEIGHTS_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "model.pt"
+)
+ANTIFOLD_WEIGHTS_URLS = [
+    "https://github.com/oxpig/AntiFold/releases/download/weights-v1/model.pt",
+    "https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt",
+]
+ANTIFOLD_WEIGHTS_SHA256 = "d5c442fa0372c28f4d0026d2f551b6f8ba7e7a127cb6837813a88093ed233e9e"
 
 IMGT_dict = {
     "all": range(1, 128 + 1),
@@ -148,27 +157,26 @@ def load_IF1_checkpoint(model, checkpoint_path: str = ""):
     return model
 
 
-def load_model(checkpoint_path: str = ""):
+def download_antifold_weights(weights_path: str):
+    os.makedirs(os.path.dirname(weights_path), exist_ok=True)
+
+    for url in ANTIFOLD_WEIGHTS_URLS:
+        log.warning(f"Downloading AntiFold model weights from {url} to {weights_path}")
+        try:
+            torch.hub.download_url_to_file(
+                url, weights_path, hash_prefix=ANTIFOLD_WEIGHTS_SHA256
+            )
+            return
+        except (urllib.error.URLError, RuntimeError) as e:
+            log.warning(f"Unable to download AntiFold model weights from {url}: {e}")
+
+    raise Exception(
+        f"Unable to download AntiFold model weights. Please download manually from {ANTIFOLD_WEIGHTS_URLS[0]} to {weights_path}"
+    )
+
+
+def load_model(checkpoint_path: str = ANTIFOLD_WEIGHTS_PATH):
     """Load raw/FT IF1 model"""
-
-    # Check that AntiFold weights are downloaded
-    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    model_path = f"{root_dir}/models/model.pt"
-
-    if not os.path.exists(model_path):
-        log.warning(
-            f"Downloading AntiFold model weights from https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt to {model_path}"
-        )
-        url = "https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt"
-        filename = model_path
-
-        os.makedirs(f"{root_dir}/models", exist_ok=True)
-        urllib.request.urlretrieve(url, filename)
-
-    if not os.path.exists(model_path) and not checkpoint_path == "ESM-IF1":
-        raise Exception(
-            f"Unable to find model weights. File does not exist: {checkpoint_path}"
-        )
 
     # Download IF1 weights
     if checkpoint_path == "ESM-IF1":
@@ -182,8 +190,11 @@ def load_model(checkpoint_path: str = ""):
 
     # Load AntiFold weights locally
     else:
+        if checkpoint_path == ANTIFOLD_WEIGHTS_PATH and not os.path.exists(checkpoint_path):
+            download_antifold_weights(checkpoint_path)
+
         model, _ = antifold.esm.pretrained._load_IF1_local()
-        model = load_IF1_checkpoint(model, model_path)
+        model = load_IF1_checkpoint(model, checkpoint_path)
 
     # Evaluation mode when predicting
     model = model.eval()

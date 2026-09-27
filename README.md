@@ -8,7 +8,7 @@ AntiFold is based on the ESM-IF1 model and is fine-tuned on solved and predicted
 - Paper: [Bioinformatics Advances](https://academic.oup.com/bioinformaticsadvances/article/5/1/vbae202/8090019)
 - Webserver: [OPIG webserver](https://opig.stats.ox.ac.uk/webapps/antifold/)
 - Colab: [![Open In Colab](images/colab-badge.svg)](https://colab.research.google.com/drive/1oEDJCHcwxGBeCiYsCm62_OHBXDHnlhb9)
-- Model: [model.pt](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt)
+- Model: [model.pt](https://github.com/oxpig/AntiFold/releases/download/weights-v1/model.pt) ([OPIG mirror](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt)), downloaded automatically on first run
 - License: [BSD 3-Clause](https://opig.stats.ox.ac.uk/data/downloads/AntiFold/LICENSE)
 
 ## Webserver
@@ -35,7 +35,7 @@ To try AntiFold without installing it, please see our OPIG webserver:
 #### Download and install from Github source (recommended - latest release)
 ```bash
 conda create --name antifold python=3.10 -y && conda activate antifold
-conda install -c conda-forge pytorch==2.2.0
+conda install -c conda-forge pytorch==2.2
 git clone https://github.com/oxpig/AntiFold && cd AntiFold
 pip install .
 ```
@@ -237,7 +237,7 @@ options:
                         Number of CPU threads to use for parallel processing (0 = all available)
   --seed SEED           Seed for reproducibility
   --model_path MODEL_PATH
-                        Alternative model weights (default models/model.pt). See --use_esm_if1_weights flag to use ESM-IF1 weights instead of AntiFold
+                        Alternative model weights (default models/model.pt). See --esm_if1_mode flag to use ESM-IF1 weights instead of AntiFold
   --esm_if1_mode        Use ESM-IF1 weights instead of AntiFold
   --verbose VERBOSE     Verbose printing
 ```

@@ -2,7 +2,6 @@ import logging
 import os
 import sys
 # import warnings
-import urllib.request
 from pathlib import Path
 
 ROOT_PATH = Path(os.path.dirname(__file__)).parent
@@ -13,7 +12,7 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 import numpy as np
 import pandas as pd
 
-from antifold.antiscripts import (df_logits_to_logprobs,
+from antifold.antiscripts import (ANTIFOLD_WEIGHTS_PATH, df_logits_to_logprobs,
                                   extract_chains_biotite, generate_pdbs_csv,
                                   get_pdbs_logits, load_model,
                                   sample_from_df_logits_HL, sample_from_df_logits_H, write_fasta_to_dir,
@@ -169,8 +168,8 @@ python antifold/main.py \
 
     p.add_argument(
         "--model_path",
-        default="",
-        help="Alternative model weights (default models/model.pt). See --use_esm_if1_weights flag to use ESM-IF1 weights instead of AntiFold",
+        default=ANTIFOLD_WEIGHTS_PATH,
+        help="Alternative model weights (default models/model.pt). See --esm_if1_mode flag to use ESM-IF1 weights instead of AntiFold",
     )
 
     p.add_argument(
@@ -285,19 +284,6 @@ def check_valid_input(args):
         """
         )
         sys.exit(1)
-
-    # # Check that AntiFold weights are downloaded
-    # root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    # filename = "models/model.pt"
-    # model_path = f"{root_dir}/{filename}"
-    # if not os.path.exists(model_path):
-    #     log.warning(
-    #         f"Downloading AntiFold model weights from https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt to {model_path}"
-    #     )
-    #     url = "https://opig.stats.ox.ac.uk/data/downloads/AntiFold/models/model.pt"
-
-    #     os.makedirs(f"{root_dir}/models", exist_ok=True)
-    #     urllib.request.urlretrieve(url, filename)
 
     # Option 1: PDB file, check heavy and light chain
     if args.pdb_file:
