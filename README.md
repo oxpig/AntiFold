@@ -317,3 +317,15 @@ The code and data in this package is based on the following paper <a href="https
       primaryClass={q-bio.BM}
 }
 ```
+
+Antibody chains are IMGT renumbered with <a href="https://github.com/oxpig/ANARCII">ANARCII</a> (BSD 3-Clause, University of Oxford) unless --skip_anarcii_numbering is passed. If you use AntiFold with renumbering, please also cite:
+
+```tex
+@article{anarcii,
+      title={ANARCII: A Generalised Language Model for Antigen Receptor Numbering},
+      author={Alexander Greenshields-Watson and Parth Agarwal and Sarah A Robinson and Benjamin Heathcote Williams and Gemma L Gordon and Henriette L Capel and Yushi Li and Fabian C Spoendlin and Fergus Boyles and Charlotte M Deane},
+      year={2025},
+      journal={bioRxiv},
+      doi={10.1101/2025.04.16.648720}
+}
+```
