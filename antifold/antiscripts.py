@@ -1,4 +1,5 @@
 import glob
+import itertools
 import logging
 import os
 import sys
@@ -7,7 +8,7 @@ import urllib.error
 from pathlib import Path
 
 ROOT_PATH = Path(os.path.dirname(__file__)).parent
-sys.path.insert(0, ROOT_PATH)
+sys.path.insert(0, str(ROOT_PATH))
 
 import re
 from collections import OrderedDict
@@ -581,7 +582,6 @@ def sample_new_sequences_CDR_HL(
     df,
     t=0.20,
     imgt_regions=["CDR1", "CDR2", "CDR3"],
-    return_mutation_df=False,
     limit_expected_variation=True,
     verbose=False,
 ):
@@ -648,27 +648,12 @@ def sample_new_sequences_CDR_HL(
             H_sampled = sampled_seq[: len(df_H)]
             L_sampled = sampled_seq[-len(df_L) :]
 
-    # Variables for calculating mismatches
-    sampled_seq = np.concatenate([H_sampled, L_sampled])
-    orig_seq = get_df_seq(df)
-
-    # DataFrame with sampled mutations
-    if return_mutation_df:
-        mut_list = np.where(sampled_seq != orig_seq)[0]
-        df_mut = df.loc[
-            mut_list, ["pdb_res", "top_res", "pdb_posins", "pdb_chain"]
-        ].copy()
-        df_mut.insert(1, "aa_sampled", sampled_seq[mut_list])
-
-        return H_sampled, L_sampled, df_mut
-
-    return H_sampled, L_sampled, df
+    return H_sampled, L_sampled
 
 def sample_new_sequences_CDR_H(
     df,
     t=0.20,
     imgt_regions=["CDR1", "CDR2", "CDR3"],
-    return_mutation_df=False,
     limit_expected_variation=True,
     verbose=False,
 ):
@@ -726,21 +711,7 @@ def sample_new_sequences_CDR_H(
             sampled_seq[backmutate_idxs] = orig_seq[backmutate_idxs]
             H_sampled = sampled_seq[: len(df_H)]
 
-    # Variables for calculating mismatches
-    sampled_seq = H_sampled
-    orig_seq = get_df_seq(df_H)
-
-    # DataFrame with sampled mutations
-    if return_mutation_df:
-        mut_list = np.where(sampled_seq != orig_seq)[0]
-        df_mut = df.loc[
-            mut_list, ["pdb_res", "top_res", "pdb_posins", "pdb_chain"]
-        ].copy()
-        df_mut.insert(1, "aa_sampled", sampled_seq[mut_list])
-
-        return H_sampled, df_mut
-
-    return H_sampled, df
+    return H_sampled
 
 
 def pdb_posins_to_pos(pdb_posins):
@@ -840,13 +811,21 @@ def get_df_seqs_H(df):
     return get_df_seq(df_H)
 
 
+def format_mutations(seq_orig, seq_mut, chain):
+    """['H:G8R', 'H:P116S'] from original and mutated chain sequence"""
+    return [
+        f"{chain}:{orig}{i+1}{mut}"
+        for i, (orig, mut) in enumerate(zip(seq_orig, seq_mut))
+        if orig != mut
+    ]
+
+
 def sample_from_df_logits_HL(
     df_logits,
     sample_n=1,
     sampling_temp=0.20,
     regions_to_mutate=["CDR1", "CDR2", "CDR3"],
     limit_expected_variation=False,
-    nanobody_mode=False,
     verbose=False,
     seed=42,
 ):
@@ -876,43 +855,44 @@ def sample_from_df_logits_HL(
     if not isinstance(sampling_temp, list):
         sampling_temp = [sampling_temp]
 
-    if not nanobody_mode:
-        for t in sampling_temp:
-            # Sample sequences n times
-            for n in range(sample_n):
+    # Sample sequences sample_n times per temperature
+    for seq_i, (t, n) in enumerate(
+        itertools.product(sampling_temp, range(sample_n)), start=1
+    ):
 
-                # Get mutated H/L sequence
-                H_mut, L_mut, df_mut = sample_new_sequences_CDR_HL(
-                    df_logits_HL,  # DataFrame with residue probabilities
-                    t=t,  # Sampling temperature
-                    imgt_regions=regions_to_mutate,  # Region to sample
-                    limit_expected_variation=limit_expected_variation,  # Only mutate as many positions are expected from temperature
-                    verbose=verbose,
-                )
+        # Get mutated H/L sequence
+        H_mut, L_mut = sample_new_sequences_CDR_HL(
+            df_logits_HL,  # DataFrame with residue probabilities
+            t=t,  # Sampling temperature
+            imgt_regions=regions_to_mutate,  # Region to sample
+            limit_expected_variation=limit_expected_variation,  # Only mutate as many positions are expected from temperature
+            verbose=verbose,
+        )
 
-                # Original sequence
-                seq_orig = "".join(H_orig) + "".join(L_orig)
+        # Original sequence
+        seq_orig = "".join(H_orig) + "".join(L_orig)
 
-                # Sequence recovery and mismatches
-                correct_matches = (H_orig == H_mut).sum() + (L_orig == L_mut).sum()
-                seq_recovery = correct_matches / len(seq_orig)
-                n_mut = (H_orig != H_mut).sum() + (L_orig != L_mut).sum()
+        # Sequence recovery and mismatches
+        mutations = format_mutations(H_orig, H_mut, "H") + format_mutations(
+            L_orig, L_mut, "L"
+        )
+        seq_recovery = 1 - len(mutations) / len(seq_orig)
 
-                seq_mut = "".join(H_mut) + "".join(L_mut)
-                score_sampled, global_score = get_sequence_sampled_global_score(
-                    seq_mut, df_logits_HL, regions_to_mutate
-                )
+        seq_mut = "".join(H_mut) + "".join(L_mut)
+        score_sampled, global_score = get_sequence_sampled_global_score(
+            seq_mut, df_logits_HL, regions_to_mutate
+        )
 
-                # Save to FASTA dict
-                _id = f"{df_logits_HL.name}__{n+1}"
-                desc = f"T={t:.2f}, sample={n+1}, score={score_sampled:.4f}, global_score={global_score:.4f}, seq_recovery={seq_recovery:.4f}, mutations={n_mut}"
-                seq_mut = "".join(H_mut) + "/" + "".join(L_mut)
-                fasta_dict[_id] = SeqIO.SeqRecord(
-                    Seq(seq_mut), id="", name="", description=desc
-                )
+        # Save to FASTA dict
+        _id = f"seq{seq_i}"
+        desc = f"T={t:.2f}, sample={n+1}, score={score_sampled:.4f}, global_score={global_score:.4f}, seq_recovery={seq_recovery:.4f}, mutations={','.join(mutations)}"
+        seq_mut = "".join(H_mut) + "/" + "".join(L_mut)
+        fasta_dict[_id] = SeqIO.SeqRecord(
+            Seq(seq_mut), id=_id, name="", description=desc
+        )
 
-                if verbose:
-                    log.info(f"{_id}: {desc}")
+        if verbose:
+            log.info(f"{_id}: {desc}")
 
     return fasta_dict
 
@@ -922,7 +902,6 @@ def sample_from_df_logits_H(
     sampling_temp=0.20,
     regions_to_mutate=["CDR1", "CDR2", "CDR3"],
     limit_expected_variation=False,
-    nanobody_mode=False,
     verbose=False,
     seed=42,
 ):
@@ -952,42 +931,42 @@ def sample_from_df_logits_H(
     if not isinstance(sampling_temp, list):
         sampling_temp = [sampling_temp]
 
-    for t in sampling_temp:
-        # Sample sequences n times
-        for n in range(sample_n):
+    # Sample sequences sample_n times per temperature
+    for seq_i, (t, n) in enumerate(
+        itertools.product(sampling_temp, range(sample_n)), start=1
+    ):
 
-            # Get mutated H/L sequence
-            H_mut, df_mut = sample_new_sequences_CDR_H(
-                df_logits_H,  # DataFrame with residue probabilities
-                t=t,  # Sampling temperature
-                imgt_regions=regions_to_mutate,  # Region to sample
-                limit_expected_variation=limit_expected_variation,  # Only mutate as many positions are expected from temperature
-                verbose=verbose,
-            )
+        # Get mutated H sequence
+        H_mut = sample_new_sequences_CDR_H(
+            df_logits_H,  # DataFrame with residue probabilities
+            t=t,  # Sampling temperature
+            imgt_regions=regions_to_mutate,  # Region to sample
+            limit_expected_variation=limit_expected_variation,  # Only mutate as many positions are expected from temperature
+            verbose=verbose,
+        )
 
-            # Original sequence
-            seq_orig = "".join(H_orig)
+        # Original sequence
+        seq_orig = "".join(H_orig)
 
-            # Sequence recovery and mismatches
-            correct_matches = (H_orig == H_mut).sum()
-            seq_recovery = correct_matches / len(seq_orig)
-            n_mut = (H_orig != H_mut).sum()
+        # Sequence recovery and mismatches
+        mutations = format_mutations(H_orig, H_mut, "H")
+        seq_recovery = 1 - len(mutations) / len(seq_orig)
 
-            seq_mut = "".join(H_mut)
-            score_sampled, global_score = get_sequence_sampled_global_score(
-                seq_mut, df_logits_H, regions_to_mutate
-            )
+        seq_mut = "".join(H_mut)
+        score_sampled, global_score = get_sequence_sampled_global_score(
+            seq_mut, df_logits_H, regions_to_mutate
+        )
 
-            # Save to FASTA dict
-            _id = f"{df_logits_H.name}__{n+1}"
-            desc = f"T={t:.2f}, sample={n+1}, score={score_sampled:.4f}, global_score={global_score:.4f}, seq_recovery={seq_recovery:.4f}, mutations={n_mut}"
-            seq_mut = "".join(H_mut)
-            fasta_dict[_id] = SeqIO.SeqRecord(
-                Seq(seq_mut), id="", name="", description=desc
-            )
+        # Save to FASTA dict
+        _id = f"seq{seq_i}"
+        desc = f"T={t:.2f}, sample={n+1}, score={score_sampled:.4f}, global_score={global_score:.4f}, seq_recovery={seq_recovery:.4f}, mutations={','.join(mutations)}"
+        seq_mut = "".join(H_mut)
+        fasta_dict[_id] = SeqIO.SeqRecord(
+            Seq(seq_mut), id=_id, name="", description=desc
+        )
 
-            if verbose:
-                log.info(f"{_id}: {desc}")
+        if verbose:
+            log.info(f"{_id}: {desc}")
 
     return fasta_dict
 

@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 ROOT_PATH = Path(os.path.dirname(__file__)).parent
-sys.path.insert(0, ROOT_PATH)
+sys.path.insert(0, str(ROOT_PATH))
 
 from argparse import ArgumentParser, RawTextHelpFormatter
 
@@ -237,7 +237,6 @@ def sample_pdbs(
                     sampling_temp=sampling_temp,
                     regions_to_mutate=regions_to_mutate,
                     limit_expected_variation=limit_expected_variation,
-                    nanobody_mode=nanobody_mode,
                     verbose=True,
                     seed=seed,
                 )
@@ -249,7 +248,6 @@ def sample_pdbs(
                     sampling_temp=sampling_temp,
                     regions_to_mutate=regions_to_mutate,
                     limit_expected_variation=limit_expected_variation,
-                    nanobody_mode=nanobody_mode,
                     verbose=True,
                     seed=seed,
                 )

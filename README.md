@@ -184,19 +184,20 @@ pdb_pos,pdb_chain,aa_orig,aa_pred,pdb_posins,perplexity,A,C,D,E,F,G,H,I,K,L,M,N,
 ```
 
 Output FASTA file with sampled sequences: <a href="https://github.com/oxpig/AntiFold/blob/master/output/example_pdbs/6y1l_imgt.fasta">6y1l_imgt.fasta</a>
+- seqN: sampled sequence number, counting across all temperatures
 - T: Temperature used for design
 - score: average log-odds of residues in the sampled region
 - global_score: average log-odds of all residues (IMGT positions 1-128)
 - regions: regions selected for design
-- seq_recovery: # mutations / total sequence length
-- mutations: # mutations from original PDB sequence
+- seq_recovery: fraction of residues identical to the original PDB sequence
+- mutations: mutations from the original PDB sequence, as chain:<original><sequence position><sampled>
 ```fasta
->6y1l_imgt , score=0.2934, global_score=0.2934, regions=['CDR1', 'CDR2', 'CDRH3'], model_name=AntiFold, seed=42
+>6y1l_imgt_HL , score=0.2934, global_score=0.2934, regions=['CDR1', 'CDR2', 'CDRH3'], model_name=AntiFold, seed=42
 VQLQESGPGLVKPSETLSLTCAVSGYSISSGYYWGWIRQPPGKGLEWIGSIYHSGSTYYN
 PSLKSRVTISVDTSKNQFSLKLSSVTAADTAVYYCAGLTQSSHNDANWGQGTLVTVSS/V
 LTQPPSVSAAPGQKVTISCSGSSSNIGNNYVSWYQQLPGTAPKRLIYDNNKRPSGIPDRF
 SGSKSGTSATLGITGLQTGDEADYYCGTWDSSLNPVFGGGTKLEIKR
-> T=0.20, sample=1, score=0.3930, global_score=0.1869, seq_recovery=0.8983, mutations=12
+>seq1 T=0.20, sample=1, score=0.3978, global_score=0.1869, seq_recovery=0.9469, mutations=H:Y26A,H:S29T,H:G31S,H:H53Y,H:T99Y,H:Q100G,H:S102P,H:H103W,H:N104S,H:D105N,H:A106P,H:N107Y
 VQLQESGPGLVKPSETLSLTCAVSGASITSSYYWGWIRQPPGKGLEWIGSIYYSGSTYYN
 PSLKSRVTISVDTSKNQFSLKLSSVTAADTAVYYCAGLYGSPWSNPYWGQGTLVTVSS/V
 LTQPPSVSAAPGQKVTISCSGSSSNIGNNYVSWYQQLPGTAPKRLIYDNNKRPSGIPDRF
