@@ -1,4 +1,4 @@
-anarcii>=2.0.8,<3
+anarcii~=2.0.8
 gemmi>=0.6
 torch_geometric>=2.4
 torch>=2.3

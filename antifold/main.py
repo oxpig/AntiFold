@@ -7,15 +7,16 @@ from pathlib import Path
 ROOT_PATH = Path(os.path.dirname(__file__)).parent
 sys.path.insert(0, str(ROOT_PATH))
 
-from argparse import ArgumentParser, ArgumentTypeError, RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 
 import numpy as np
 import pandas as pd
+import torch
 
 from antifold.if1_dataset import get_pdb_path
-from antifold.imgt_numbering import renumber_pdbs
+from antifold.imgt_numbering import renumber_pdbs, warn_if_not_imgt_numbered
 from antifold.antiscripts import (ANTIFOLD_WEIGHTS_PATH, DEFAULT_DEVICE,
-                                  CHAIN_POSITION_REGEX, REGION_TO_ASSUMED, df_logits_to_logprobs,
+                                  parse_regions, df_logits_to_logprobs,
                                   extract_chains_biotite, generate_pdbs_csv,
                                   get_pdbs_logits, load_model,
                                   sample_from_df_logits_HL, sample_from_df_logits_H, write_fasta_to_dir,
@@ -51,7 +52,7 @@ python antifold/main.py \
     --custom_chain_mode
     """
     p = ArgumentParser(
-        description="Predict antibody variable domain inverse folding probabilities and sample sequences with maintained fold.\nAntibody chains are IMGT renumbered with ANARCII by default (positions 1-128); pass --number_with_anarcii false to use the input numbering as-is.",
+        description="Predict antibody variable domain inverse folding probabilities and sample sequences with maintained fold.\nAntibody chains are IMGT renumbered with ANARCII by default (positions 1-128); pass --skip_anarcii_numbering to use the input numbering as-is.",
         formatter_class=RawTextHelpFormatter,
         usage=usage,
     )
@@ -67,11 +68,6 @@ python antifold/main.py \
             parser.error(f"Directory {arg} does not exist!")
         else:
             return arg
-
-    def _boolean_arg(arg):
-        if arg.lower() in ("true", "false"):
-            return arg.lower() == "true"
-        raise ArgumentTypeError(f"Expected true or false, got {arg}")
 
     p.add_argument(
         "--pdb_file",
@@ -152,10 +148,9 @@ python antifold/main.py \
     )
 
     p.add_argument(
-        "--number_with_anarcii",
-        default="true",
-        type=_boolean_arg,
-        help="IMGT renumber antibody chains with ANARCII before predicting (true/false, default true)",
+        "--skip_anarcii_numbering",
+        action="store_true",
+        help="Skip IMGT renumbering with ANARCII, using the input numbering as-is",
     )
 
     p.add_argument(
@@ -313,14 +308,13 @@ def check_valid_input(args):
 
         # Check CSV formatting
         df = pd.read_csv(args.pdbs_csv, comment="#")
-        if (
-            not df.columns.isin(["pdb", "Hchain", "Lchain"]).sum() >= 3
-            and not args.custom_chain_mode
-        ):
+        if "pdb" not in df.columns or not [c for c in df.columns[1:] if "chain" in c]:
             log.error(
-                f"Multi-PDB input: Please specify CSV  with columns ['pdb', 'Hchain', 'Lchain'] with PDB names (no extension), H and L chains"
+                f"Multi-PDB input: {args.pdbs_csv} needs a 'pdb' column followed by one "
+                f"chain column per chain to run, heavy chain first "
+                f"(conventionally 'Hchain', 'Lchain')"
             )
-            log.error(f"CSV columns: {df.columns}")
+            log.error(f"CSV columns: {list(df.columns)}")
             sys.exit(1)
 
         # Check PDBs exist before loading the model
@@ -342,16 +336,14 @@ def check_valid_input(args):
 
     # Regions are IMGT names (CDR1, CDRH3, allH) or chain-prefixed IMGT positions (H:111)
     args.regions_to_mutate = args.regions.split(" ")
-    for region in args.regions_to_mutate:
-        if region not in REGION_TO_ASSUMED and not CHAIN_POSITION_REGEX.match(region):
-            log.error(
-                f"""Invalid --regions entry '{region}'. Please choose one of:
-        1) IMGT region names: {', '.join(REGION_TO_ASSUMED)}
-        2) Chain-prefixed IMGT positions, e.g. H:111, L:66-70 or H:10-12,15
-        Nb: design a single chain with e.g. allH, allL, CDRH, CDRL or an H:/L: prefix
-        """
-            )
-            sys.exit(1)
+    try:
+        parse_regions(args.regions_to_mutate)
+    except ValueError as e:
+        log.error(
+            f"{e}\n        Nb: design a single chain with e.g. allH, allL, CDRH, "
+            f"CDRL or an H:/L: prefix"
+        )
+        sys.exit(1)
 
     # ESM-IF1 mode
     if args.esm_if1_mode:
@@ -371,6 +363,11 @@ def main(args):
 
     # Create output directory
     os.makedirs(args.out_dir, exist_ok=True)
+
+    # Torch thread count reorders float summation, so fix it once for every model
+    if args.num_threads >= 1:
+        torch.set_num_threads(args.num_threads)
+    args.num_threads = torch.get_num_threads()
 
     # Try reading in sampling temperatures
     try:
@@ -393,7 +390,7 @@ def main(args):
             args.heavy_chain = args.nanobody_chain
 
         # No chains specified, assume 1st heavy, 2nd light. ANARCII corrects this
-        # unless --number_with_anarcii false is set
+        # unless --skip_anarcii_numbering is set
         elif not args.heavy_chain:
             chains = extract_chains_biotite(args.pdb_file)
             args.heavy_chain = chains[0]
@@ -443,14 +440,18 @@ def main(args):
         )
 
     # IMGT renumber antibody chains, so region masks read off correct positions
-    if args.number_with_anarcii:
+    if args.skip_anarcii_numbering:
+        warn_if_not_imgt_numbered(pdbs_csv, pdb_dir, args.custom_chain_mode)
+    else:
         pdbs_csv, pdb_dir = renumber_pdbs(
             pdbs_csv,
             pdb_dir,
             out_dir=f"{args.out_dir}/imgt_numbered",
             nanobody_mode=args.nanobody_mode,
             chains_specified=args.chains_specified,
+            custom_chain_mode=args.custom_chain_mode,
             device=args.device,
+            num_threads=args.num_threads,
         )
 
     # Load AntiFold or ESM-IF1 model
