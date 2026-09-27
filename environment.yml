@@ -1,8 +1,6 @@
 name: antifold
 channels:
-  - pytorch
-  - nvidia
+  - conda-forge
 dependencies:
   - python=3.13
-  - pytorch
-  - pytorch-cuda=12.1
+  - pytorch=*=cuda*

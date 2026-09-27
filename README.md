@@ -19,7 +19,7 @@ To try AntiFold without installing it, please see our OPIG webserver:
 ## Features
 - Antibody (+ antigen) probabilities and sequence sampling
 - Nanobody (+ antigen) probabilities and sequence sampling
-- Sampling of residues from specified IMGT regions. Nb: assumes antibody is IMGT numbered! (See --num_seq_per_target and --regions)
+- Sampling of residues from specified IMGT regions or individual IMGT positions. Nb: assumes antibody is IMGT numbered! (See --num_seq_per_target and --regions)
 - Supports use of AntiFold fine-tuned weights and ESM-IF1 pre-trained weights (See --esm_if1_mode)
 - Extraction of per-residue inverse-folding embeddings (See --extract_embeddings)
 - GPU accelerated predictions (See --device)
@@ -46,7 +46,7 @@ conda env create -f environment.yml
 python -m pip install .
 ```
 
-Depending on your CUDA version you may need to change the dependency `pytorch-cuda=12.1` in the environment.yml file.
+This installs a CUDA build of PyTorch from conda-forge matching your NVIDIA driver, and fails if no GPU driver is found.
 Detailed instructions on how to correctly install pytorch for your system can be found [here](https://pytorch.org/get-started/locally/)
 
 #### Run AntiFold (inverse-folding probabilities, sample sequences on IMGT-numbered PDBs)
@@ -87,6 +87,16 @@ python antifold/main.py \
     --num_seq_per_target 10 \
     --sampling_temp "0.2" \
     --regions "CDR1 CDR2 CDR3"
+
+# Sample specific IMGT positions instead of whole regions
+# Positions take an H: or L: prefix, and mix with region names (e.g. "CDRH3 L:66-70")
+python antifold/main.py \
+    --pdb_file data/pdbs/6y1l_imgt.pdb \
+    --heavy_chain H \
+    --light_chain L \
+    --num_seq_per_target 10 \
+    --sampling_temp "0.2" \
+    --regions "H:10-12,111-112 L:66-70"
 
 # Run all chains with ESM-IF1 model weights
 python antifold/main.py \
@@ -141,7 +151,8 @@ Parameters for generating new sequences:
 PDBs should be IMGT annotated for the sequence sampling regions to be valid.
 
 - Number of sequences to generate (--num_seq_per_target)
-- Region to mutate (--region) based on inverse folding probabilities. Select from list in IMGT_dict (e.g. 'CDRH1 CDRH2 CDRH3')
+- Region to mutate (--regions) based on inverse folding probabilities. Select from list in IMGT_dict (e.g. 'CDRH1 CDRH2 CDRH3'), or give chain-prefixed IMGT positions (e.g. 'H:111-112 L:66-70'). The two can be combined (e.g. 'CDRH3 L:66-70'). Positions require an H: or L: prefix, since IMGT numbering repeats across the heavy and light chain, and they include insertion codes, so H:111 also covers 111A and 111B
+- Design a single chain by naming it in --regions: allH, allL, CDRH, CDRL, the chain-specific names (CDRH1, FWL2 ...) or an H:/L: position prefix
 - Sampling temperature (--sampling_temp) controls generated sequence diversity, by scaling the inverse folding probabilities before sampling. Temperature = 1 means no change, while temperature ~ 0 only samples the most likely amino-acid at each position (acts as argmax).
 ```
 
@@ -173,19 +184,20 @@ pdb_pos,pdb_chain,aa_orig,aa_pred,pdb_posins,perplexity,A,C,D,E,F,G,H,I,K,L,M,N,
 ```
 
 Output FASTA file with sampled sequences: <a href="https://github.com/oxpig/AntiFold/blob/master/output/example_pdbs/6y1l_imgt.fasta">6y1l_imgt.fasta</a>
+- seqN: sampled sequence number, counting across all temperatures
 - T: Temperature used for design
 - score: average log-odds of residues in the sampled region
 - global_score: average log-odds of all residues (IMGT positions 1-128)
 - regions: regions selected for design
-- seq_recovery: # mutations / total sequence length
-- mutations: # mutations from original PDB sequence
+- seq_recovery: fraction of residues identical to the original PDB sequence
+- mutations: mutations from the original PDB sequence, as chain:<original><sequence position><sampled>
 ```fasta
->6y1l_imgt , score=0.2934, global_score=0.2934, regions=['CDR1', 'CDR2', 'CDRH3'], model_name=AntiFold, seed=42
+>6y1l_imgt_HL , score=0.2934, global_score=0.2934, regions=['CDR1', 'CDR2', 'CDRH3'], model_name=AntiFold, seed=42
 VQLQESGPGLVKPSETLSLTCAVSGYSISSGYYWGWIRQPPGKGLEWIGSIYHSGSTYYN
 PSLKSRVTISVDTSKNQFSLKLSSVTAADTAVYYCAGLTQSSHNDANWGQGTLVTVSS/V
 LTQPPSVSAAPGQKVTISCSGSSSNIGNNYVSWYQQLPGTAPKRLIYDNNKRPSGIPDRF
 SGSKSGTSATLGITGLQTGDEADYYCGTWDSSLNPVFGGGTKLEIKR
-> T=0.20, sample=1, score=0.3930, global_score=0.1869, seq_recovery=0.8983, mutations=12
+>seq1 T=0.20, sample=1, score=0.3978, global_score=0.1869, seq_recovery=0.9469, mutations=H:Y26A,H:S29T,H:G31S,H:H53Y,H:T99Y,H:Q100G,H:S102P,H:H103W,H:N104S,H:D105N,H:A106P,H:N107Y
 VQLQESGPGLVKPSETLSLTCAVSGASITSSYYWGWIRQPPGKGLEWIGSIYYSGSTYYN
 PSLKSRVTISVDTSKNQFSLKLSSVTAADTAVYYCAGLYGSPWSNPYWGQGTLVTVSS/V
 LTQPPSVSAAPGQKVTISCSGSSSNIGNNYVSWYQQLPGTAPKRLIYDNNKRPSGIPDRF
@@ -220,7 +232,7 @@ options:
   --pdbs_csv PDBS_CSV   Input CSV file with PDB names and H/L chains (multi-PDB predictions)
   --pdb_dir PDB_DIR     Directory with input PDB files (multi-PDB predictions)
   --out_dir OUT_DIR     Output directory
-  --regions REGIONS     Space-separated regions to mutate. Default 'CDR1 CDR2 CDR3H'
+  --regions REGIONS     Space-separated regions to mutate. Either IMGT region names (CDR1, CDRH3, allH) or chain-prefixed IMGT positions (H:111, L:66-70, H:10-12,15). Positions include insertion codes, so H:111 also covers 111A and 111B. Default 'CDR1 CDR2 CDR3'
   --num_seq_per_target NUM_SEQ_PER_TARGET
                         Number of sequences to sample from each antibody PDB (default 0)
   --sampling_temp SAMPLING_TEMP
@@ -228,8 +240,6 @@ options:
   --limit_variation     Limit variation to as many mutations as expected from temperature sampling
   --extract_embeddings  Extract per-residue embeddings from AntiFold / ESM-IF1
   --custom_chain_mode   Run all specified chains (for antibody-antigen complexes or any combination of chains)
-  --exclude_heavy       Exclude heavy chain from sampling
-  --exclude_light       Exclude light chain from sampling
   --batch_size BATCH_SIZE
                         Batch-size to use
   --num_threads NUM_THREADS
