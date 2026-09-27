@@ -12,7 +12,7 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 import numpy as np
 import pandas as pd
 
-from antifold.antiscripts import (ANTIFOLD_WEIGHTS_PATH, df_logits_to_logprobs,
+from antifold.antiscripts import (ANTIFOLD_WEIGHTS_PATH, DEFAULT_DEVICE, df_logits_to_logprobs,
                                   extract_chains_biotite, generate_pdbs_csv,
                                   get_pdbs_logits, load_model,
                                   sample_from_df_logits_HL, sample_from_df_logits_H, write_fasta_to_dir,
@@ -184,6 +184,12 @@ python antifold/main.py \
         default=False,
         action="store_true",
         help="Use ESM-IF1 weights instead of AntiFold",
+    )
+
+    p.add_argument(
+        "--device",
+        default=DEFAULT_DEVICE,
+        help="Device to run on: cpu, cuda or mps (default: cuda if available, else cpu)",
     )
 
     p.add_argument(
@@ -444,7 +450,7 @@ def main(args):
 
     # Load AntiFold or ESM-IF1 model
     # Infer model from file path
-    model = load_model(args.model_path)
+    model = load_model(args.model_path, device=args.device)
 
     # Get dict with PDBs, sampled sequences and logits / log_odds DataFrame
     pdb_output_dict = sample_pdbs(
