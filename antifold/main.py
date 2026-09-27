@@ -450,6 +450,7 @@ def main(args):
             out_dir=f"{args.out_dir}/imgt_numbered",
             nanobody_mode=args.nanobody_mode,
             chains_specified=args.chains_specified,
+            custom_chain_mode=args.custom_chain_mode,
             device=args.device,
         )
 
