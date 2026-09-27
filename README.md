@@ -152,6 +152,7 @@ PDBs should be IMGT annotated for the sequence sampling regions to be valid.
 
 - Number of sequences to generate (--num_seq_per_target)
 - Region to mutate (--regions) based on inverse folding probabilities. Select from list in IMGT_dict (e.g. 'CDRH1 CDRH2 CDRH3'), or give chain-prefixed IMGT positions (e.g. 'H:111-112 L:66-70'). The two can be combined (e.g. 'CDRH3 L:66-70'). Positions require an H: or L: prefix, since IMGT numbering repeats across the heavy and light chain, and they include insertion codes, so H:111 also covers 111A and 111B
+- Design a single chain by naming it in --regions: allH, allL, CDRH, CDRL, the chain-specific names (CDRH1, FWL2 ...) or an H:/L: position prefix
 - Sampling temperature (--sampling_temp) controls generated sequence diversity, by scaling the inverse folding probabilities before sampling. Temperature = 1 means no change, while temperature ~ 0 only samples the most likely amino-acid at each position (acts as argmax).
 ```
 
@@ -238,8 +239,6 @@ options:
   --limit_variation     Limit variation to as many mutations as expected from temperature sampling
   --extract_embeddings  Extract per-residue embeddings from AntiFold / ESM-IF1
   --custom_chain_mode   Run all specified chains (for antibody-antigen complexes or any combination of chains)
-  --exclude_heavy       Exclude heavy chain from sampling
-  --exclude_light       Exclude light chain from sampling
   --batch_size BATCH_SIZE
                         Batch-size to use
   --num_threads NUM_THREADS

@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from antifold.antiscripts import (ANTIFOLD_WEIGHTS_PATH, DEFAULT_DEVICE,
-                                  IMGT_dict, POSITION_REGEX, df_logits_to_logprobs,
+                                  CHAIN_POSITION_REGEX, REGION_TO_ASSUMED, df_logits_to_logprobs,
                                   extract_chains_biotite, generate_pdbs_csv,
                                   get_pdbs_logits, load_model,
                                   sample_from_df_logits_HL, sample_from_df_logits_H, write_fasta_to_dir,
@@ -145,14 +145,6 @@ python antifold/main.py \
     )
 
     p.add_argument(
-        "--exclude_heavy", action="store_true", help="Exclude heavy chain from sampling"
-    )
-
-    p.add_argument(
-        "--exclude_light", action="store_true", help="Exclude light chain from sampling"
-    )
-
-    p.add_argument(
         "--batch_size", default=1, type=int, help="Batch-size to use",
     )
 
@@ -209,8 +201,6 @@ def sample_pdbs(
     sample_n=10,
     sampling_temp=0.50,
     limit_expected_variation=False,
-    exclude_heavy=False,
-    exclude_light=False,
     batch_size=1,
     extract_embeddings=False,
     custom_chain_mode=False,
@@ -246,7 +236,7 @@ def sample_pdbs(
                     sample_n=sample_n,
                     sampling_temp=sampling_temp,
                     regions_to_mutate=regions_to_mutate,
-                    limit_expected_variation=False,
+                    limit_expected_variation=limit_expected_variation,
                     nanobody_mode=nanobody_mode,
                     verbose=True,
                     seed=seed,
@@ -258,7 +248,7 @@ def sample_pdbs(
                     sample_n=sample_n,
                     sampling_temp=sampling_temp,
                     regions_to_mutate=regions_to_mutate,
-                    limit_expected_variation=False,
+                    limit_expected_variation=limit_expected_variation,
                     nanobody_mode=nanobody_mode,
                     verbose=True,
                     seed=seed,
@@ -351,6 +341,19 @@ def check_valid_input(args):
         )
         log.warning(f"WARNING: Specify manually with --pdbs_csv CSV file")
 
+    # Regions are IMGT names (CDR1, CDRH3, allH) or chain-prefixed IMGT positions (H:111)
+    args.regions_to_mutate = args.regions.split(" ")
+    for region in args.regions_to_mutate:
+        if region not in REGION_TO_ASSUMED and not CHAIN_POSITION_REGEX.match(region):
+            log.error(
+                f"""Invalid --regions entry '{region}'. Please choose one of:
+        1) IMGT region names: {', '.join(REGION_TO_ASSUMED)}
+        2) Chain-prefixed IMGT positions, e.g. H:111, L:66-70 or H:10-12,15
+        Nb: design a single chain with e.g. allH, allL, CDRH, CDRL or an H:/L: prefix
+        """
+            )
+            sys.exit(1)
+
     # ESM-IF1 mode
     if args.esm_if1_mode:
         args.model_path = "ESM-IF1"
@@ -369,16 +372,6 @@ def main(args):
 
     # Create output directory
     os.makedirs(args.out_dir, exist_ok=True)
-
-    # Read in regions, either IMGT names or chain-prefixed IMGT positions
-    regions_to_mutate = args.regions.split(" ")
-    for region in regions_to_mutate:
-        if region not in IMGT_dict and not POSITION_REGEX.match(region):
-            raise ValueError(
-                f"Invalid --regions entry '{region}'. Expected an IMGT region name "
-                f"({', '.join(IMGT_dict)}) or chain-prefixed IMGT positions "
-                f"(e.g. H:111, L:66-70, H:10-12,15)"
-            )
 
     # Try reading in sampling temperatures
     try:
@@ -446,7 +439,7 @@ def main(args):
     # Extra: Sample sequences with num_seq_per_target >= 1
     if args.num_seq_per_target >= 1:
         log.info(
-            f"Will sample {args.num_seq_per_target} sequences from {len(pdbs_csv.values)} PDBs at temperature(s) {args.sampling_temp} and regions: {regions_to_mutate}"
+            f"Will sample {args.num_seq_per_target} sequences from {len(pdbs_csv.values)} PDBs at temperature(s) {args.sampling_temp} and regions: {args.regions_to_mutate}"
         )
 
     # Load AntiFold or ESM-IF1 model
@@ -458,13 +451,11 @@ def main(args):
         model=model,
         pdbs_csv_or_dataframe=pdbs_csv,
         pdb_dir=pdb_dir,
-        regions_to_mutate=regions_to_mutate,
+        regions_to_mutate=args.regions_to_mutate,
         out_dir=args.out_dir,
         sample_n=args.num_seq_per_target,
         sampling_temp=args.sampling_temp,
         limit_expected_variation=args.limit_variation,
-        exclude_heavy=args.exclude_heavy,
-        exclude_light=args.exclude_light,
         batch_size=args.batch_size,
         extract_embeddings=args.extract_embeddings,
         custom_chain_mode=args.custom_chain_mode,

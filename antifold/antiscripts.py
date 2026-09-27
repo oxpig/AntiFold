@@ -81,7 +81,29 @@ IMGT_dict = {
 }
 
 # Positions must name a chain, since IMGT numbering repeats across heavy and light
-POSITION_REGEX = re.compile(r"^[HL]:\d+(-\d+)?(,\d+(-\d+)?)*$")
+CHAIN_POSITION_REGEX = re.compile(r"^[HL]:\d+(-\d+)?(,\d+(-\d+)?)*$")
+
+# The regions assigned to each residue as assumed_region, and the --regions names
+# selecting them. Chain-agnostic names (CDR1, all) select both heavy and light.
+ASSUMED_REGIONS = [
+    "CDRH1", "CDRH2", "CDRH3", "FWH1", "FWH2", "FWH3", "FWH4",
+    "CDRL1", "CDRL2", "CDRL3", "FWL1", "FWL2", "FWL3", "FWL4",
+]
+
+REGION_TO_ASSUMED = {region: [region] for region in ASSUMED_REGIONS}
+REGION_TO_ASSUMED.update(
+    {
+        "all": ASSUMED_REGIONS,
+        "allH": [r for r in ASSUMED_REGIONS if "H" in r],
+        "allL": [r for r in ASSUMED_REGIONS if "L" in r],
+        "CDRH": [r for r in ASSUMED_REGIONS if r.startswith("CDRH")],
+        "CDRL": [r for r in ASSUMED_REGIONS if r.startswith("CDRL")],
+        "FWH": [r for r in ASSUMED_REGIONS if r.startswith("FWH")],
+        "FWL": [r for r in ASSUMED_REGIONS if r.startswith("FWL")],
+        **{f"CDR{i}": [f"CDRH{i}", f"CDRL{i}"] for i in (1, 2, 3)},
+        **{f"FW{i}": [f"FWH{i}", f"FWL{i}"] for i in (1, 2, 3, 4)},
+    }
+)
 
 
 def extract_chains_biotite(pdb_file):
@@ -559,8 +581,6 @@ def sample_new_sequences_CDR_HL(
     df,
     t=0.20,
     imgt_regions=["CDR1", "CDR2", "CDR3"],
-    exclude_heavy=False,
-    exclude_light=False,
     return_mutation_df=False,
     limit_expected_variation=True,
     verbose=False,
@@ -590,7 +610,7 @@ def sample_new_sequences_CDR_HL(
     H_sampled = get_df_seq(df_H)
 
     regions = [region for region in imgt_regions if "L" not in region]
-    if len(regions) > 0 and not exclude_heavy:
+    if len(regions) > 0:
         region_mask = get_imgt_mask(df_H, regions)
         H_sampled[region_mask] = _sample_cdr_seq(df_H, regions, t=t)
 
@@ -598,7 +618,7 @@ def sample_new_sequences_CDR_HL(
     L_sampled = get_df_seq(df_L)
 
     regions = [region for region in imgt_regions if "H" not in region]
-    if len(regions) > 0 and not exclude_light:
+    if len(regions) > 0:
         region_mask = get_imgt_mask(df_L, regions)
         L_sampled[region_mask] = _sample_cdr_seq(df_L, regions, t=t)
 
@@ -648,8 +668,6 @@ def sample_new_sequences_CDR_H(
     df,
     t=0.20,
     imgt_regions=["CDR1", "CDR2", "CDR3"],
-    exclude_heavy=False,
-    exclude_light=False,
     return_mutation_df=False,
     limit_expected_variation=True,
     verbose=False,
@@ -679,7 +697,7 @@ def sample_new_sequences_CDR_H(
     H_sampled = get_df_seq(df_H)
 
     regions = [region for region in imgt_regions if "L" not in region]
-    if len(regions) > 0 and not exclude_heavy:
+    if len(regions) > 0:
         region_mask = get_imgt_mask(df_H, regions)
         H_sampled[region_mask] = _sample_cdr_seq(df_H, regions, t=t)
 
@@ -753,72 +771,13 @@ def parse_chain_positions(region):
 def get_imgt_mask(df, imgt_regions=["CDR1", "CDR2", "CDR3"]):
     """Returns e.g. CDR1+2+3 mask"""
 
-    # region_map = df["assumed_region"].map(
-    #     {
-    #         "CDRH1": "CDR1", "CDRH2": "CDR2", "CDRH3": "CDR3",
-    #         "CDRL1": "CDR1", "CDRL2": "CDR2", "CDRL3": "CDR3",
-    #         "FWH1": "FW1", "FWH2": "FW2", "FWH3": "FW3", "FWH4": "FW4",
-    #         "FWL1": "FW1", "FWL2": "FW2", "FWL3": "FW3", "FWL4": "FW4"
-    #         }
-    # )
-
-    # df regions are chain specific (CDRH1, CDRL1, etc)
-    # User-specific imgt_regions can be non-chain specific (CDR1, CDR2, CDR3)
-    # -> Map to chain-specific regions
-
-    S_regions = pd.Series(imgt_regions)
     chosen_regions = []
     chosen_positions = []
-    for regions in S_regions:
-        if POSITION_REGEX.match(regions):
-            chosen_positions.append(parse_chain_positions(regions))
-        elif regions == "CDR1":
-            chosen_regions.extend(["CDRH1", "CDRL1"])
-        elif regions == "CDR2":
-            chosen_regions.extend(["CDRH2", "CDRL2"])
-        elif regions == "CDR3":
-            chosen_regions.extend(["CDRH3", "CDRL3"])
-        elif regions == "FW1":
-            chosen_regions.extend(["FWH1", "FWL1"])
-        elif regions == "FW2":
-            chosen_regions.extend(["FWH2", "FWL2"])
-        elif regions == "FW3":
-            chosen_regions.extend(["FWH3", "FWL3"])
-        elif regions == "FW4":
-            chosen_regions.extend(["FWH4", "FWL4"])
-        elif regions == "CDRH":
-            chosen_regions.extend(["CDRH1", "CDRH2", "CDRH3"])
-        elif regions == "CDRL":
-            chosen_regions.extend(["CDRL1", "CDRL2", "CDRL3"])
-        elif regions == "FWH":
-            chosen_regions.extend(["FWH1", "FWH2", "FWH3", "FWH4"])
-        elif regions == "FWL":
-            chosen_regions.extend(["FWL1", "FWL2", "FWL3", "FWL4"])
-        elif regions == "all":
-            chosen_regions.extend(
-                [
-                    "CDRH1", "CDRH2", "CDRH3",
-                    "CDRL1", "CDRL2", "CDRL3",
-                    "FWH1", "FWH2", "FWH3", "FWH4",
-                    "FWL1", "FWL2", "FWL3", "FWL4"
-                ]
-            )
-        elif regions == "allH":
-            chosen_regions.extend(
-                [
-                    "CDRH1", "CDRH2", "CDRH3",
-                    "FWH1", "FWH2", "FWH3", "FWH4"
-                ]
-            )
-        elif regions == "allL":
-            chosen_regions.extend(
-                [
-                    "CDRL1", "CDRL2", "CDRL3",
-                    "FWL1", "FWL2", "FWL3", "FWL4"
-                ]
-            )
+    for region in imgt_regions:
+        if CHAIN_POSITION_REGEX.match(region):
+            chosen_positions.append(parse_chain_positions(region))
         else:
-            chosen_regions.append(regions)
+            chosen_regions.extend(REGION_TO_ASSUMED[region])
 
     region_mask = df["assumed_region"].isin(chosen_regions).values
 
@@ -886,8 +845,6 @@ def sample_from_df_logits_HL(
     sample_n=1,
     sampling_temp=0.20,
     regions_to_mutate=["CDR1", "CDR2", "CDR3"],
-    exclude_heavy=False,
-    exclude_light=False,
     limit_expected_variation=False,
     nanobody_mode=False,
     verbose=False,
@@ -929,8 +886,6 @@ def sample_from_df_logits_HL(
                     df_logits_HL,  # DataFrame with residue probabilities
                     t=t,  # Sampling temperature
                     imgt_regions=regions_to_mutate,  # Region to sample
-                    exclude_heavy=exclude_heavy,  # Allow mutations in heavy chain
-                    exclude_light=exclude_light,  # Allow mutation in light chain
                     limit_expected_variation=limit_expected_variation,  # Only mutate as many positions are expected from temperature
                     verbose=verbose,
                 )
@@ -966,8 +921,6 @@ def sample_from_df_logits_H(
     sample_n=1,
     sampling_temp=0.20,
     regions_to_mutate=["CDR1", "CDR2", "CDR3"],
-    exclude_heavy=False,
-    exclude_light=False,
     limit_expected_variation=False,
     nanobody_mode=False,
     verbose=False,
@@ -1008,8 +961,6 @@ def sample_from_df_logits_H(
                 df_logits_H,  # DataFrame with residue probabilities
                 t=t,  # Sampling temperature
                 imgt_regions=regions_to_mutate,  # Region to sample
-                exclude_heavy=exclude_heavy,  # Allow mutations in heavy chain
-                exclude_light=exclude_light,  # Allow mutation in light chain
                 limit_expected_variation=limit_expected_variation,  # Only mutate as many positions are expected from temperature
                 verbose=verbose,
             )
