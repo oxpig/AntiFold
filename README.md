@@ -46,7 +46,7 @@ conda env create -f environment.yml
 python -m pip install .
 ```
 
-Depending on your CUDA version you may need to change the dependency `pytorch-cuda=12.1` in the environment.yml file.
+This installs a CUDA build of PyTorch from conda-forge matching your NVIDIA driver, and fails if no GPU driver is found.
 Detailed instructions on how to correctly install pytorch for your system can be found [here](https://pytorch.org/get-started/locally/)
 
 #### Run AntiFold (inverse-folding probabilities, sample sequences on IMGT-numbered PDBs)
