@@ -28,7 +28,7 @@ To try AntiFold without installing it, please see our OPIG webserver:
 - Input should be either a paired variable domain structure (VH/VL) antibody or nanobody (VHH) (--nanobody_mode)
 - AntiFold assumes the first PDB chain is the heavy chain, and second the light chain, unless manually specified by the user (See --pdbs_csv, --heavy_chain, --light_chain options)
 - Antigen chains can optionally be specified. We recommend only including a single, ideally small, antigen chain. (See --pdbs_csv or --antigen_chain options)
-- Antibody chains are IMGT renumbered with [ANARCII](https://github.com/oxpig/ANARCII) by default, so input need not be IMGT numbered. Chains ANARCII does not recognise as antibody chains (e.g. antigens) are left untouched. Pass --no_number_with_anarcii to use the input numbering as-is
+- Antibody chains are IMGT renumbered with [ANARCII](https://github.com/oxpig/ANARCII) by default, so input need not be IMGT numbered. Chains ANARCII does not recognise as antibody chains (e.g. antigens) are left untouched. Pass --skip_anarcii_numbering to use the input numbering as-is
 
 ## Install and run AntiFold
 
@@ -215,7 +215,7 @@ python antifold/main.py \
     --antigen_chain Y # Optional
 
 Predict antibody variable domain inverse folding probabilities and sample sequences with maintained fold.
-Antibody chains are IMGT renumbered with ANARCII by default (positions 1-128); pass --no_number_with_anarcii to use the input numbering as-is.
+Antibody chains are IMGT renumbered with ANARCII by default (positions 1-128); pass --skip_anarcii_numbering to use the input numbering as-is.
 
 options:
   -h, --help            show this help message and exit
@@ -237,7 +237,7 @@ options:
   --limit_variation     Limit variation to as many mutations as expected from temperature sampling
   --extract_embeddings  Extract per-residue embeddings from AntiFold / ESM-IF1
   --custom_chain_mode   Run all specified chains (for antibody-antigen complexes or any combination of chains)
-  --no_number_with_anarcii
+  --skip_anarcii_numbering
                         Skip IMGT renumbering with ANARCII, using the input numbering as-is
   --batch_size BATCH_SIZE
                         Batch-size to use
