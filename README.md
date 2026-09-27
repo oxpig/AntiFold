@@ -28,7 +28,7 @@ To try AntiFold without installing it, please see our OPIG webserver:
 - Input should be either a paired variable domain structure (VH/VL) antibody or nanobody (VHH) (--nanobody_mode)
 - AntiFold assumes the first PDB chain is the heavy chain, and second the light chain, unless manually specified by the user (See --pdbs_csv, --heavy_chain, --light_chain options)
 - Antigen chains can optionally be specified. We recommend only including a single, ideally small, antigen chain. (See --pdbs_csv or --antigen_chain options)
-- Sequence sampling assumes PDBs have been IMGT numbered. You can find IMGT numbered PDBs on [SAbDab](https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab), or re-number PDBs with [ANARCI](https://github.com/oxpig/ANARCI)
+- Antibody chains are IMGT renumbered with [ANARCII](https://github.com/oxpig/ANARCII) by default, so input need not be IMGT numbered. Chains ANARCII does not recognise as antibody chains (e.g. antigens) are left untouched. Pass --skip_anarcii_numbering to use the input numbering as-is
 
 ## Install and run AntiFold
 
@@ -79,7 +79,6 @@ python antifold/main.py \
     --pdbs_csv data/antibody_antigen.csv
 
 # Sample sequences 10x (paired VH/VL only)
-# Note: Requires IMGT numbered PDBs (e.g. from SAbDab or numbered with ANARCI)
 python antifold/main.py \
     --pdb_file data/pdbs/6y1l_imgt.pdb \
     --heavy_chain H \
@@ -190,14 +189,14 @@ Output FASTA file with sampled sequences: <a href="https://github.com/oxpig/Anti
 - global_score: average log-odds of all residues (IMGT positions 1-128)
 - regions: regions selected for design
 - seq_recovery: fraction of residues identical to the original PDB sequence
-- mutations: mutations from the original PDB sequence, as chain:<original><sequence position><sampled>
+- mutations: mutations from the original PDB sequence, as chain:<original><IMGT position><sampled>
 ```fasta
 >6y1l_imgt_HL , score=0.2934, global_score=0.2934, regions=['CDR1', 'CDR2', 'CDRH3'], model_name=AntiFold, seed=42
 VQLQESGPGLVKPSETLSLTCAVSGYSISSGYYWGWIRQPPGKGLEWIGSIYHSGSTYYN
 PSLKSRVTISVDTSKNQFSLKLSSVTAADTAVYYCAGLTQSSHNDANWGQGTLVTVSS/V
 LTQPPSVSAAPGQKVTISCSGSSSNIGNNYVSWYQQLPGTAPKRLIYDNNKRPSGIPDRF
 SGSKSGTSATLGITGLQTGDEADYYCGTWDSSLNPVFGGGTKLEIKR
->seq1 T=0.20, sample=1, score=0.3978, global_score=0.1869, seq_recovery=0.9469, mutations=H:Y26A,H:S29T,H:G31S,H:H53Y,H:T99Y,H:Q100G,H:S102P,H:H103W,H:N104S,H:D105N,H:A106P,H:N107Y
+>seq1 T=0.20, sample=1, score=0.3978, global_score=0.1869, seq_recovery=0.9469, mutations=H:Y28A,H:S31T,H:G36S,H:H58Y,H:T108Y,H:Q109G,H:S112P,H:H113W,H:N114S,H:D115N,H:A116P,H:N117Y
 VQLQESGPGLVKPSETLSLTCAVSGASITSSYYWGWIRQPPGKGLEWIGSIYYSGSTYYN
 PSLKSRVTISVDTSKNQFSLKLSSVTAADTAVYYCAGLYGSPWSNPYWGQGTLVTVSS/V
 LTQPPSVSAAPGQKVTISCSGSSSNIGNNYVSWYQQLPGTAPKRLIYDNNKRPSGIPDRF
@@ -215,10 +214,8 @@ python antifold/main.py \
     --light_chain L \
     --antigen_chain Y # Optional
 
-Predict inverse folding probabilities for antibody variable domain, and sample sequences with maintained fold.
-PDB structures should be IMGT-numbered, paired heavy and light chain variable domains (positions 1-128).
-
-For IMGT numbering PDBs use SAbDab or https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabpred/anarci/
+Predict antibody variable domain inverse folding probabilities and sample sequences with maintained fold.
+Antibody chains are IMGT renumbered with ANARCII by default (positions 1-128); pass --skip_anarcii_numbering to use the input numbering as-is.
 
 options:
   -h, --help            show this help message and exit
@@ -240,6 +237,8 @@ options:
   --limit_variation     Limit variation to as many mutations as expected from temperature sampling
   --extract_embeddings  Extract per-residue embeddings from AntiFold / ESM-IF1
   --custom_chain_mode   Run all specified chains (for antibody-antigen complexes or any combination of chains)
+  --skip_anarcii_numbering
+                        Skip IMGT renumbering with ANARCII, using the input numbering as-is
   --batch_size BATCH_SIZE
                         Batch-size to use
   --num_threads NUM_THREADS
@@ -253,9 +252,8 @@ options:
 ```
 
 ## IMGT regions dict
-Used to specify which regions to mutate in an IMGT numbered PDB
-- IMGT numbered PDBs: [https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab](https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabdab)
-- Renumber existing PDBs with ANARCI: [https://github.com/oxpig/ANARCI](https://github.com/oxpig/ANARCI)
+Used to specify which regions to mutate. Chains are IMGT renumbered with ANARCII before prediction, so these positions are always meaningful.
+- ANARCII: [https://github.com/oxpig/ANARCII](https://github.com/oxpig/ANARCII)
 - Read more: [https://www.imgt.org/IMGTScientificChart/Numbering/IMGTIGVLsuperfamily.html](https://www.imgt.org/IMGTScientificChart/Numbering/IMGTIGVLsuperfamily.html)
 
 ```python
@@ -317,5 +315,17 @@ The code and data in this package is based on the following paper <a href="https
       eprint={2405.03370},
       archivePrefix={arXiv},
       primaryClass={q-bio.BM}
+}
+```
+
+Antibody chains are IMGT renumbered with <a href="https://github.com/oxpig/ANARCII">ANARCII</a> (BSD 3-Clause, University of Oxford) unless --skip_anarcii_numbering is passed. If you use AntiFold with renumbering, please also cite:
+
+```tex
+@article{anarcii,
+      title={ANARCII: A Generalised Language Model for Antigen Receptor Numbering},
+      author={Alexander Greenshields-Watson and Parth Agarwal and Sarah A Robinson and Benjamin Heathcote Williams and Gemma L Gordon and Henriette L Capel and Yushi Li and Fabian C Spoendlin and Fergus Boyles and Charlotte M Deane},
+      year={2025},
+      journal={bioRxiv},
+      doi={10.1101/2025.04.16.648720}
 }
 ```
