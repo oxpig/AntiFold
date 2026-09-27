@@ -72,7 +72,16 @@ def extract_coords_from_structure(structure: biotite.structure.AtomArray):
     """
     coords = get_atom_coords_residuewise(["N", "CA", "C"], structure)
     res_pos, res_posinschain, res_3letter = get_residues_imgt(structure)
-    seq = "".join([ProteinSequence.convert_letter_3to1(r) for r in res_3letter])
+    try:
+        seq = "".join([ProteinSequence.convert_letter_3to1(r) for r in res_3letter])
+    except KeyError as e:
+        residue = e.args[0]
+        position = res_posinschain[list(res_3letter).index(residue)]
+        raise ValueError(
+            f"Unsupported residue {residue} at position {position} (IMGT position + chain). "
+            "AntiFold supports the 20 standard amino acids (plus MSE, SEC and UNK). "
+            "Please replace modified residues with their standard counterparts (e.g. SEP -> SER)."
+        ) from e
     return coords, seq, res_pos, res_posinschain
 
 
