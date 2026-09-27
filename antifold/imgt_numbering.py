@@ -15,6 +15,7 @@ log = logging.getLogger(__name__)
 
 # AntiFold runs one heavy chain, optionally paired with one light chain
 CHAIN_COLUMNS = ("Hchain", "Lchain")
+CHAIN_NAMES = {"Hchain": "a heavy chain", "Lchain": "a light chain"}
 
 # ANARCII reports kappa and lambda separately; AntiFold treats both as light
 HEAVY_TYPE = "H"
@@ -23,6 +24,10 @@ LIGHT_TYPES = ("K", "L")
 # IMGT-numbered heavy chains have no position 10, so its presence means the input
 # was never IMGT numbered and every region mask read off it would be wrong
 NON_IMGT_HEAVY_POSITION = 10
+
+AS_GIVEN = (
+    "Correct the chains, or re-run with --skip_anarcii_numbering to use them as given"
+)
 
 
 class UnusableChains(ValueError):
@@ -54,12 +59,10 @@ def _get_chain(structure, chain, pdb_path):
     return found
 
 
-def _number_chains(model, structure, chains, pdb_path):
-    """ANARCII numbering of the named chains, keyed by chain ID"""
+def _number_chains(model, structure, pdb_path):
+    """ANARCII numbering of every polymer chain in the structure, by chain ID"""
 
-    sequences = {
-        chain: polymer_seq(_get_chain(structure, chain, pdb_path)) for chain in chains
-    }
+    sequences = {chain.name: polymer_seq(chain) for chain in structure[0]}
     sequences = {chain: seq for chain, seq in sequences.items() if seq}
 
     if not sequences:
@@ -68,57 +71,39 @@ def _number_chains(model, structure, chains, pdb_path):
     return model.number(sequences)
 
 
-def _chain_type(chain, result, qa_passed):
-    """ANARCII chain type, raising unless it is an antibody heavy or light chain"""
+def _antibody_chains(numbered):
+    """{chain ID: ANARCII type} for the chains read as antibody heavy/light chains
 
-    if result["chain_type"] in (HEAVY_TYPE, *LIGHT_TYPES) and qa_passed:
-        return result["chain_type"]
-
-    raise UnusableChains(
-        f"chain {chain} is not an antibody heavy or light chain: ANARCII "
-        f"reports chain type {result['chain_type']}, score {result['score']:.1f}"
-        f"{', ' + result['error'] if result['error'] else ''}\n"
-        f"Specify the antibody chains with --heavy_chain/--light_chain, or re-run "
-        f"with --no_number_with_anarcii to use the input numbering as-is"
-    )
-
-
-def _antibody_chain_types(numbered, qa):
-    """ANARCII chain types of the antibody chains only; others are antigen/context"""
-
-    chain_types = {
+    Everything else - antigens, and anything failing ANARCII's own QA - is left out,
+    so it keeps the numbering it came with.
+    """
+    return {
         chain: result["chain_type"]
         for chain, result in numbered.items()
-        if result["chain_type"] in (HEAVY_TYPE, *LIGHT_TYPES) and qa(result)
+        if result["chain_type"] in (HEAVY_TYPE, *LIGHT_TYPES)
+        and numbered_sequence_qa(result)
     }
-    if not chain_types:
-        raise UnusableChains(
-            f"no antibody chain found among {sorted(numbered)}. Specify the chains "
-            f"with --heavy_chain/--light_chain, or re-run with "
-            f"--no_number_with_anarcii to use the input numbering as-is"
-        )
-    return chain_types
 
 
-def _assign_chains(chain_types):
+def _assign_chains(antibody):
     """Maps Hchain/Lchain to chain IDs by ANARCII chain type"""
 
     assigned = {}
-    for chain, chain_type in chain_types.items():
+    for chain, chain_type in antibody.items():
         col = "Hchain" if chain_type == HEAVY_TYPE else "Lchain"
 
         if col in assigned:
-            name = "heavy" if col == "Hchain" else "light"
             raise UnusableChains(
-                f"chains {assigned[col]} and {chain} are both {name} chains. "
+                f"chains {assigned[col]} and {chain} are both {CHAIN_NAMES[col]}. "
                 f"AntiFold runs one heavy chain, optionally paired with one light chain"
             )
         assigned[col] = chain
 
     if "Hchain" not in assigned:
         raise UnusableChains(
-            f"no heavy chain among {sorted(chain_types)}. AntiFold requires "
-            f"a heavy (or nanobody) chain"
+            f"no antibody heavy chain found (ANARCII recognised "
+            f"{sorted(antibody) or 'no antibody chains'}). AntiFold requires a heavy "
+            f"(or nanobody) chain"
         )
 
     return assigned
@@ -129,18 +114,86 @@ def _format_chains(chains):
     return ", ".join(f"{col}={chain}" for col, chain in sorted(chains.items()))
 
 
-def _check_agreement(candidates, assigned):
-    """Raises unless ANARCII agrees with the heavy/light chains the user gave"""
+def _check_named_chains(named, numbered, antibody, custom_chain_mode):
+    """Raises unless each named Hchain/Lchain is the antibody chain type claimed
 
-    if assigned == candidates:
+    In custom_chain_mode the chain columns are a selection that may hold any chain,
+    so one ANARCII does not recognise keeps its own numbering. A chain read as the
+    other type is a contradiction either way.
+    """
+
+    for col, chain in named.items():
+        if chain not in numbered:
+            raise UnusableChains(f"{col}={chain} is not a polymer chain of this PDB")
+
+        chain_type = antibody.get(chain)
+
+        if chain_type in ((HEAVY_TYPE,) if col == "Hchain" else LIGHT_TYPES):
+            continue
+
+        if chain_type is None:
+            if custom_chain_mode:
+                log.info(f"{col}={chain} is not an antibody chain, numbered as given")
+                continue
+            raise UnusableChains(f"{col}={chain} is not an antibody chain. {AS_GIVEN}")
+
+        reads_as = "Hchain" if chain_type == HEAVY_TYPE else "Lchain"
+        raise UnusableChains(
+            f"{col}={chain} is not {CHAIN_NAMES[col]}: ANARCII reads it as "
+            f"{CHAIN_NAMES[reads_as]}. {AS_GIVEN}"
+        )
+
+
+def _reconcile_chain_columns(
+    pdb, pdbs_csv, i, numbered, antibody, chains_specified, custom_chain_mode
+):
+    """Checks the Hchain/Lchain columns against ANARCII, or corrects them
+
+    Chains the user named are a claim, so they are only checked. Chains AntiFold
+    guessed from file order are rewritten to ANARCII's reading. In custom_chain_mode
+    the columns are a selection, so unnamed ones are left exactly as given.
+    """
+
+    named = _candidate_chains(pdbs_csv, i) if chains_specified else {}
+
+    if named:
+        _check_named_chains(named, numbered, antibody, custom_chain_mode)
         return
 
-    raise UnusableChains(
-        f"ANARCII disagrees with the chains given "
-        f"({_format_chains(candidates)}): it reads them as "
-        f"{_format_chains(assigned)}. Correct the chains, or re-run with "
-        f"--no_number_with_anarcii to use them as given"
-    )
+    if custom_chain_mode:
+        return
+
+    assigned = _assign_chains(antibody)
+
+    if "Lchain" not in assigned:
+        raise UnusableChains(
+            f"only a heavy chain ({assigned['Hchain']}) found, and an unpaired chain "
+            f"needs --nanobody_chain or --custom_chain_mode"
+        )
+
+    log.info(f"{pdb}: ANARCII found {_format_chains(assigned)}")
+
+    for col in CHAIN_COLUMNS:
+        if col in pdbs_csv.columns:
+            pdbs_csv.loc[i, col] = None
+    for col, chain in assigned.items():
+        pdbs_csv.loc[i, col] = chain
+
+
+def _write_structure(structure, out_dir, pdb_path):
+    """Writes the renumbered structure out in the format it came in"""
+
+    # AntiFold reads the first model only, so the rest would be written out
+    # still carrying their original numbering
+    while len(structure) > 1:
+        del structure[1]
+
+    out_path = f"{out_dir}/{os.path.basename(pdb_path)}"
+
+    if out_path.endswith(".cif"):
+        structure.make_mmcif_document().write_file(out_path)
+    else:
+        structure.write_pdb(out_path)
 
 
 def renumber_pdbs(
@@ -155,12 +208,9 @@ def renumber_pdbs(
 ):
     """IMGT renumbers antibody heavy/light chains, returns (pdbs_csv, pdb_dir)
 
-    Every antibody chain ANARCII recognises is renumbered; antigen and other
-    chains are written out untouched. Which chain counts as heavy or light is
-    decided by how the chains reached us: named Hchain/Lchain must be the type
-    claimed or this raises, chain columns under other names in custom_chain_mode
-    are a selection and are left alone, and chains AntiFold guessed from file
-    order are corrected to ANARCII's reading.
+    Every chain ANARCII reads as an antibody chain is renumbered; antigens and
+    anything else keep the numbering they came with. The Hchain/Lchain columns are
+    then checked or corrected - see _reconcile_chain_columns.
     """
 
     os.makedirs(out_dir, exist_ok=True)
@@ -190,70 +240,22 @@ def renumber_pdbs(
         # A PDB whose chains ANARCII cannot use is skipped, so one bad structure
         # does not lose a whole batch
         try:
-            candidates = _candidate_chains(pdbs_csv, i) if chains_specified else {}
-
-            if candidates:
-                # Named Hchain/Lchain are a claim: each must be the type claimed
-                numbered = _number_chains(
-                    model, structure, candidates.values(), pdb_path
-                )
-                chain_types = {
-                    chain: _chain_type(chain, result, numbered_sequence_qa(result))
-                    for chain, result in numbered.items()
-                }
-                _check_agreement(candidates, _assign_chains(chain_types))
-                reassign = None
-
-            elif custom_chain_mode:
-                # Chains listed under other column names are a selection, not a
-                # heavy/light claim: renumber only the antibody chains among them
-                numbered = _number_chains(
-                    model, structure, _row_chains(pdbs_csv, i), pdb_path
-                )
-                chain_types = _antibody_chain_types(numbered, numbered_sequence_qa)
-                reassign = None
-
-            else:
-                # No chains given: read every chain and let ANARCII find the antibody
-                polymers = {ch.name: polymer_seq(ch) for ch in structure[0]}
-                numbered = model.number({c: s for c, s in polymers.items() if s})
-                chain_types = _antibody_chain_types(numbered, numbered_sequence_qa)
-                reassign = _assign_chains(chain_types)
-
-                if "Lchain" not in reassign:
-                    raise UnusableChains(
-                        f"only a heavy chain ({reassign['Hchain']}) found, and an "
-                        f"unpaired chain needs --nanobody_chain or --custom_chain_mode"
-                    )
-                log.info(f"{_pdb}: ANARCII found {_format_chains(reassign)}")
-
+            numbered = _number_chains(model, structure, pdb_path)
+            antibody = _antibody_chains(numbered)
+            _reconcile_chain_columns(
+                _pdb, pdbs_csv, i, numbered, antibody,
+                chains_specified, custom_chain_mode,
+            )
         except UnusableChains as e:
             log.warning(f"WARNING: skipping {_pdb}: {e}")
             skipped.append(str(_pdb))
             continue
 
-        if reassign:
-            for col in CHAIN_COLUMNS:
-                if col in pdbs_csv.columns:
-                    pdbs_csv.loc[i, col] = None
-            for col, chain in reassign.items():
-                pdbs_csv.loc[i, col] = chain
-
-        for chain, chain_type in chain_types.items():
+        for chain, chain_type in antibody.items():
             renumber_pdbx(structure, 0, chain, numbered[chain])
             log.info(f"{_pdb} chain {chain}: IMGT renumbered ({chain_type})")
 
-        # AntiFold reads the first model only, so the rest would be written out
-        # still carrying their original numbering
-        while len(structure) > 1:
-            del structure[1]
-
-        out_path = f"{out_dir}/{os.path.basename(pdb_path)}"
-        if out_path.endswith(".cif"):
-            structure.make_mmcif_document().write_file(out_path)
-        else:
-            structure.write_pdb(out_path)
-
+        _write_structure(structure, out_dir, pdb_path)
         kept.append(i)
 
     if skipped:
@@ -265,7 +267,7 @@ def renumber_pdbs(
     if not kept:
         raise ValueError(
             f"No PDBs left to run: ANARCII could not use the chains of any of the "
-            f"{len(pdbs_csv)} given. Re-run with --no_number_with_anarcii to use "
+            f"{len(pdbs_csv)} given. Re-run with --skip_anarcii_numbering to use "
             f"the chains and numbering as given"
         )
 
@@ -273,11 +275,16 @@ def renumber_pdbs(
     return pdbs_csv.loc[kept].reset_index(drop=True), out_dir
 
 
-def warn_if_not_imgt_numbered(pdbs_csv, pdb_dir):
+def warn_if_not_imgt_numbered(pdbs_csv, pdb_dir, custom_chain_mode=False):
     """Warns for each PDB whose heavy chain is not IMGT numbered
 
     Renumbering is off, so region masks are read off the input numbering as given.
+    In custom_chain_mode the first chain need not be a heavy chain, so there is
+    nothing to check it against.
     """
+
+    if custom_chain_mode:
+        return
 
     for i in pdbs_csv.index:
         _pdb = pdbs_csv.loc[i, "pdb"]
@@ -294,5 +301,5 @@ def warn_if_not_imgt_numbered(pdbs_csv, pdb_dir):
                 f"WARNING: {_pdb} chain {chains[0]} has IMGT position "
                 f"{NON_IMGT_HEAVY_POSITION}, which IMGT-numbered heavy chains do not, "
                 f"so it is probably not IMGT numbered. Region masks and sampling will "
-                f"be wrong. Drop --no_number_with_anarcii to renumber it with ANARCII"
+                f"be wrong. Drop --skip_anarcii_numbering to renumber it with ANARCII"
             )

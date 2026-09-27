@@ -52,7 +52,7 @@ python antifold/main.py \
     --custom_chain_mode
     """
     p = ArgumentParser(
-        description="Predict antibody variable domain inverse folding probabilities and sample sequences with maintained fold.\nAntibody chains are IMGT renumbered with ANARCII by default (positions 1-128); pass --no_number_with_anarcii to use the input numbering as-is.",
+        description="Predict antibody variable domain inverse folding probabilities and sample sequences with maintained fold.\nAntibody chains are IMGT renumbered with ANARCII by default (positions 1-128); pass --skip_anarcii_numbering to use the input numbering as-is.",
         formatter_class=RawTextHelpFormatter,
         usage=usage,
     )
@@ -148,7 +148,7 @@ python antifold/main.py \
     )
 
     p.add_argument(
-        "--no_number_with_anarcii",
+        "--skip_anarcii_numbering",
         action="store_true",
         help="Skip IMGT renumbering with ANARCII, using the input numbering as-is",
     )
@@ -390,7 +390,7 @@ def main(args):
             args.heavy_chain = args.nanobody_chain
 
         # No chains specified, assume 1st heavy, 2nd light. ANARCII corrects this
-        # unless --no_number_with_anarcii is set
+        # unless --skip_anarcii_numbering is set
         elif not args.heavy_chain:
             chains = extract_chains_biotite(args.pdb_file)
             args.heavy_chain = chains[0]
@@ -440,8 +440,8 @@ def main(args):
         )
 
     # IMGT renumber antibody chains, so region masks read off correct positions
-    if args.no_number_with_anarcii:
-        warn_if_not_imgt_numbered(pdbs_csv, pdb_dir)
+    if args.skip_anarcii_numbering:
+        warn_if_not_imgt_numbered(pdbs_csv, pdb_dir, args.custom_chain_mode)
     else:
         pdbs_csv, pdb_dir = renumber_pdbs(
             pdbs_csv,

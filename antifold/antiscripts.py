@@ -19,9 +19,8 @@ import torch
 import torch.nn.functional as F
 from Bio import SeqIO
 from Bio.Seq import Seq
-from biotite.structure.io import pdb
-
 import antifold.esm
+from antifold.esm.inverse_folding.util import load_structure
 from antifold.esm_util_custom import CoordBatchConverter_mask_gpu
 from antifold.if1_dataset import InverseData
 
@@ -89,9 +88,8 @@ IMGT_POSITIONS = range(1, 128 + 1)
 
 
 def extract_chains_biotite(pdb_file):
-    """Extract chains in order"""
-    pdbf = pdb.PDBFile.read(pdb_file)
-    structure = pdb.get_structure(pdbf, model=1)
+    """Extract chains in order, from a PDB or CIF file"""
+    structure = load_structure(pdb_file)
     return pd.unique(structure.chain_id)
 
 
