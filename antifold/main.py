@@ -12,7 +12,8 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 import numpy as np
 import pandas as pd
 
-from antifold.antiscripts import (ANTIFOLD_WEIGHTS_PATH, DEFAULT_DEVICE, df_logits_to_logprobs,
+from antifold.antiscripts import (ANTIFOLD_WEIGHTS_PATH, DEFAULT_DEVICE,
+                                  POSITION_REGEX, REGION_NAME_REGEX, df_logits_to_logprobs,
                                   extract_chains_biotite, generate_pdbs_csv,
                                   get_pdbs_logits, load_model,
                                   sample_from_df_logits_HL, sample_from_df_logits_H, write_fasta_to_dir,
@@ -106,7 +107,7 @@ python antifold/main.py \
     p.add_argument(
         "--regions",
         default="CDR1 CDR2 CDR3",
-        help="Space-separated regions to mutate. Default 'CDR1 CDR2 CDR3H'",
+        help="Space-separated regions to mutate. Either IMGT region names (CDR1, CDRH3, allH) or chain-prefixed IMGT positions (H:111, L:66-70, H:10-12,15). Positions include insertion codes, so H:111 also covers 111A and 111B. Default 'CDR1 CDR2 CDR3'",
     )
 
     p.add_argument(
@@ -369,15 +370,15 @@ def main(args):
     # Create output directory
     os.makedirs(args.out_dir, exist_ok=True)
 
-    # Try reading in regions
-    regions_to_mutate = []
-    for region in args.regions.split(" "):
-        # Either interpret as positions (ints)
-        try:
-            regions_to_mutate.append(int(region))
-        # Or as regions (strings)
-        except ValueError:
-            regions_to_mutate.append(region)
+    # Read in regions, either IMGT names or chain-prefixed IMGT positions
+    regions_to_mutate = args.regions.split(" ")
+    for region in regions_to_mutate:
+        if not REGION_NAME_REGEX.match(region) and not POSITION_REGEX.match(region):
+            raise ValueError(
+                f"Invalid --regions entry '{region}'. Expected an IMGT region name "
+                f"(e.g. CDR1, CDRH3, allH) or chain-prefixed IMGT positions "
+                f"(e.g. H:111, L:66-70, H:10-12,15)"
+            )
 
     # Try reading in sampling temperatures
     try:
@@ -508,3 +509,4 @@ if __name__ == "__main__":
 
     except Exception as E:
         log.exception(f"Prediction encountered an unexpected error: {E}")
+        sys.exit(1)

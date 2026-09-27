@@ -19,7 +19,7 @@ To try AntiFold without installing it, please see our OPIG webserver:
 ## Features
 - Antibody (+ antigen) probabilities and sequence sampling
 - Nanobody (+ antigen) probabilities and sequence sampling
-- Sampling of residues from specified IMGT regions. Nb: assumes antibody is IMGT numbered! (See --num_seq_per_target and --regions)
+- Sampling of residues from specified IMGT regions or individual IMGT positions. Nb: assumes antibody is IMGT numbered! (See --num_seq_per_target and --regions)
 - Supports use of AntiFold fine-tuned weights and ESM-IF1 pre-trained weights (See --esm_if1_mode)
 - Extraction of per-residue inverse-folding embeddings (See --extract_embeddings)
 - GPU accelerated predictions (See --device)
@@ -88,6 +88,16 @@ python antifold/main.py \
     --sampling_temp "0.2" \
     --regions "CDR1 CDR2 CDR3"
 
+# Sample specific IMGT positions instead of whole regions
+# Positions take an H: or L: prefix, and mix with region names (e.g. "CDRH3 L:66-70")
+python antifold/main.py \
+    --pdb_file data/pdbs/6y1l_imgt.pdb \
+    --heavy_chain H \
+    --light_chain L \
+    --num_seq_per_target 10 \
+    --sampling_temp "0.2" \
+    --regions "H:10-12,111-112 L:66-70"
+
 # Run all chains with ESM-IF1 model weights
 python antifold/main.py \
     --pdb_dir data/pdbs \
@@ -141,7 +151,7 @@ Parameters for generating new sequences:
 PDBs should be IMGT annotated for the sequence sampling regions to be valid.
 
 - Number of sequences to generate (--num_seq_per_target)
-- Region to mutate (--region) based on inverse folding probabilities. Select from list in IMGT_dict (e.g. 'CDRH1 CDRH2 CDRH3')
+- Region to mutate (--regions) based on inverse folding probabilities. Select from list in IMGT_dict (e.g. 'CDRH1 CDRH2 CDRH3'), or give chain-prefixed IMGT positions (e.g. 'H:111-112 L:66-70'). The two can be combined (e.g. 'CDRH3 L:66-70'). Positions require an H: or L: prefix, since IMGT numbering repeats across the heavy and light chain, and they include insertion codes, so H:111 also covers 111A and 111B
 - Sampling temperature (--sampling_temp) controls generated sequence diversity, by scaling the inverse folding probabilities before sampling. Temperature = 1 means no change, while temperature ~ 0 only samples the most likely amino-acid at each position (acts as argmax).
 ```
 
@@ -220,7 +230,7 @@ options:
   --pdbs_csv PDBS_CSV   Input CSV file with PDB names and H/L chains (multi-PDB predictions)
   --pdb_dir PDB_DIR     Directory with input PDB files (multi-PDB predictions)
   --out_dir OUT_DIR     Output directory
-  --regions REGIONS     Space-separated regions to mutate. Default 'CDR1 CDR2 CDR3H'
+  --regions REGIONS     Space-separated regions to mutate. Either IMGT region names (CDR1, CDRH3, allH) or chain-prefixed IMGT positions (H:111, L:66-70, H:10-12,15). Positions include insertion codes, so H:111 also covers 111A and 111B. Default 'CDR1 CDR2 CDR3'
   --num_seq_per_target NUM_SEQ_PER_TARGET
                         Number of sequences to sample from each antibody PDB (default 0)
   --sampling_temp SAMPLING_TEMP

@@ -80,6 +80,11 @@ IMGT_dict = {
     "FWL4": range(118, 128 + 1),
 }
 
+REGION_NAME_REGEX = re.compile(r"^[A-Za-z]+\d?$")
+
+# Positions must name a chain, since IMGT numbering repeats across heavy and light
+POSITION_REGEX = re.compile(r"^[HL]:\d+(-\d+)?(,\d+(-\d+)?)*$")
+
 
 def extract_chains_biotite(pdb_file):
     """Extract chains in order"""
@@ -727,6 +732,26 @@ def pdb_posins_to_pos(pdb_posins):
     return pdb_posins.astype(str).str.extract(r"(\d+)")[0].astype(int).values
 
 
+def parse_positions(region):
+    """'H:10-12,15' -> ('H', [10, 11, 12, 15])"""
+
+    chain, _, ranges = region.partition(":")
+
+    positions = []
+    for part in ranges.split(","):
+        first, _, last = part.partition("-")
+        first, last = int(first), int(last or first)
+
+        if last < first:
+            raise ValueError(
+                f"Invalid --regions range '{part}' in '{region}': end position before start"
+            )
+
+        positions.extend(range(first, last + 1))
+
+    return chain, positions
+
+
 def get_imgt_mask(df, imgt_regions=["CDR1", "CDR2", "CDR3"]):
     """Returns e.g. CDR1+2+3 mask"""
 
@@ -745,8 +770,12 @@ def get_imgt_mask(df, imgt_regions=["CDR1", "CDR2", "CDR3"]):
 
     S_regions = pd.Series(imgt_regions)
     chosen_regions = []
+    chosen_positions = {}
     for regions in S_regions:
-        if regions == "CDR1":
+        if POSITION_REGEX.match(regions):
+            chain, positions = parse_positions(regions)
+            chosen_positions.setdefault(chain, []).extend(positions)
+        elif regions == "CDR1":
             chosen_regions.extend(["CDRH1", "CDRL1"])
         elif regions == "CDR2":
             chosen_regions.extend(["CDRH2", "CDRL2"])
@@ -791,6 +820,12 @@ def get_imgt_mask(df, imgt_regions=["CDR1", "CDR2", "CDR3"]):
             chosen_regions.append(regions)
 
     region_mask = df["assumed_region"].isin(chosen_regions).values
+
+    # assumed_region (CDRH1, FWL2 ...) carries the chain, so positions stay
+    # chain-specific whether df holds the heavy chain, the light chain or both
+    for chain, positions in chosen_positions.items():
+        chain_mask = df["assumed_region"].str.contains(chain, regex=False).values
+        region_mask = region_mask | (chain_mask & df["pdb_pos"].isin(positions).values)
 
     return region_mask
 
