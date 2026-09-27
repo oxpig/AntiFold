@@ -397,7 +397,7 @@ def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader, n
     for idx, seq_probs in enumerate(all_seqprobs_list):
         # Get PDB sequence, position+insertion code and H+L chain idxs
         (
-            pdb_name,
+            _pdb_name,
             pdb_chainsname,
             pdb_res,
             pdb_posins,
@@ -455,13 +455,6 @@ def predictions_list_to_df_logits_list(all_seqprobs_list, dataset, dataloader, n
                     mask = df_L["pdb_pos"].isin(IMGT_dict[region])
                     df_logits.loc[df_L.index[mask], "assumed_region"] = region
 
-        # Skip if not IMGT numbered - 10 never found in H-chain IMGT numbered PDBs
-        Hchain = pdb_chains[0]
-        Hpos = positions[pdb_chains == Hchain]
-        if 10 in Hpos and not dataset.custom_chain_mode:
-            log.error(
-                f"WARNING: PDB {pdb_name} seems to not be IMGT numbered! Sequence sampling on IMGT regions may not be correct. See https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabpred/anarci/"
-            )
         # Limit to IMGT positions only (only ones trained on)
         # imgt_mask = get_imgt_mask(df_logits, imgt_regions=["all"])
         # df_logits = df_logits[imgt_mask]

@@ -18,6 +18,16 @@ from antifold.esm_multichain_util_custom import (concatenate_coords_any,
                                                  load_complex_coords)
 
 
+def get_pdb_path(pdb_dir, pdb):
+    """Returns path to PDB or CIF file"""
+    for ext in ("pdb", "cif"):
+        pdb_path = f"{pdb_dir}/{pdb}.{ext}"
+        if os.path.exists(pdb_path):
+            return pdb_path
+
+    raise FileNotFoundError(f"Unable to find PDB/CIF file: {pdb_dir}/{pdb}.[pdb|cif]")
+
+
 class InverseData(torch.utils.data.Dataset):
     """
     Prepare dataset for ESM-IF1, including span masking and adding gaussian noise, returning
@@ -169,17 +179,7 @@ class InverseData(torch.utils.data.Dataset):
             )
             sys.exit(1)
 
-        # Create list of PDB paths and check that they exist
-        pdb_path_list = []
-        for _pdb in df["pdb"]:
-            pdb_path = f"{pdb_dir}/{_pdb}.pdb"
-
-            # Check for PDB/CIF
-            pdb_path = pdb_path if os.path.exists(pdb_path) else f"{pdb_dir}/{_pdb}.cif"
-            pdb_path_list.append(pdb_path)
-
-            if not os.path.exists(pdb_path):
-                raise Exception(f"Unable to find PDB/CIF file: {pdb_path}")
+        pdb_path_list = [get_pdb_path(pdb_dir, _pdb) for _pdb in df["pdb"]]
 
         # Infer order of chain from CSV columns (first item pdb, then chains)
         # Should be Hchain, Lchain, then any order

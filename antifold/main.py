@@ -7,11 +7,13 @@ from pathlib import Path
 ROOT_PATH = Path(os.path.dirname(__file__)).parent
 sys.path.insert(0, str(ROOT_PATH))
 
-from argparse import ArgumentParser, RawTextHelpFormatter
+from argparse import ArgumentParser, ArgumentTypeError, RawTextHelpFormatter
 
 import numpy as np
 import pandas as pd
 
+from antifold.if1_dataset import get_pdb_path
+from antifold.imgt_numbering import renumber_pdbs
 from antifold.antiscripts import (ANTIFOLD_WEIGHTS_PATH, DEFAULT_DEVICE,
                                   CHAIN_POSITION_REGEX, REGION_TO_ASSUMED, df_logits_to_logprobs,
                                   extract_chains_biotite, generate_pdbs_csv,
@@ -49,7 +51,7 @@ python antifold/main.py \
     --custom_chain_mode
     """
     p = ArgumentParser(
-        description="Predict antibody variable domain inverse folding probabilities and sample sequences with maintained fold.\nPDB structures should be IMGT-numbered, paired heavy and light chain variable domains (positions 1-128).\n\nFor IMGT numbering PDBs use SAbDab or https://opig.stats.ox.ac.uk/webapps/sabdab-sabpred/sabpred/anarci/",
+        description="Predict antibody variable domain inverse folding probabilities and sample sequences with maintained fold.\nAntibody chains are IMGT renumbered with ANARCII by default (positions 1-128); pass --number_with_anarcii false to use the input numbering as-is.",
         formatter_class=RawTextHelpFormatter,
         usage=usage,
     )
@@ -65,6 +67,11 @@ python antifold/main.py \
             parser.error(f"Directory {arg} does not exist!")
         else:
             return arg
+
+    def _boolean_arg(arg):
+        if arg.lower() in ("true", "false"):
+            return arg.lower() == "true"
+        raise ArgumentTypeError(f"Expected true or false, got {arg}")
 
     p.add_argument(
         "--pdb_file",
@@ -142,6 +149,13 @@ python antifold/main.py \
         default=False,
         action="store_true",
         help="Run all specified chains (for antibody-antigen complexes or any combination of chains)",
+    )
+
+    p.add_argument(
+        "--number_with_anarcii",
+        default="true",
+        type=_boolean_arg,
+        help="IMGT renumber antibody chains with ANARCII before predicting (true/false, default true)",
     )
 
     p.add_argument(
@@ -309,27 +323,9 @@ def check_valid_input(args):
             log.error(f"CSV columns: {df.columns}")
             sys.exit(1)
 
-        # Check PDBs exist
-        missing = 0
-        for i, _pdb in enumerate(df["pdb"].values):
-            pdb_path = f"{args.pdb_dir}/{_pdb}.pdb"
-
-            # Check for PDB/CIF file
-            pdb_path = (
-                pdb_path if os.path.exists(pdb_path) else f"{args.pdb_dir}/{_pdb}.cif"
-            )
-
-            if not os.path.exists(pdb_path):
-                log.warning(
-                    f"WARNING: Unable to find PDB/CIF file ({missing+1}): {pdb_path}"
-                )
-                missing += 1
-
-        if missing >= 1:
-            log.error(
-                f"WARNING: Missing {missing} PDB/CIFs specified in {args.pdbs_csv} but not found in {args.pdb_dir}"
-            )
-            sys.exit(1)
+        # Check PDBs exist before loading the model
+        for _pdb in df["pdb"]:
+            get_pdb_path(args.pdb_dir, _pdb)
 
     # Option 3: PDB directory only, infer chains
     elif args.pdb_dir:
@@ -338,6 +334,11 @@ def check_valid_input(args):
             f"WARNING: Heavy/light chains not specified for PDB/CIF files in folder {_dir}. Assuming 1st chain heavy, 2nd chain light."
         )
         log.warning(f"WARNING: Specify manually with --pdbs_csv CSV file")
+
+    # Chains the user named are checked to be antibody chains; guessed ones are not
+    args.chains_specified = bool(
+        args.heavy_chain or args.nanobody_chain or args.pdbs_csv
+    )
 
     # Regions are IMGT names (CDR1, CDRH3, allH) or chain-prefixed IMGT positions (H:111)
     args.regions_to_mutate = args.regions.split(" ")
@@ -391,11 +392,12 @@ def main(args):
             args.nanobody_mode = True
             args.heavy_chain = args.nanobody_chain
 
-        # No chains specified, assume 1st heavy, 2nd light (unless single-chain mode)
+        # No chains specified, assume 1st heavy, 2nd light. ANARCII corrects this
+        # unless --number_with_anarcii false is set
         elif not args.heavy_chain:
-            args.heavy_chain, args.light_chain = extract_chains_biotite(args.pdb_file)[
-                :2
-            ]
+            chains = extract_chains_biotite(args.pdb_file)
+            args.heavy_chain = chains[0]
+            args.light_chain = chains[1] if len(chains) > 1 else None
             log.warning(
                 f"{_pdb}: assuming heavy_chain {args.heavy_chain}, light_chain {args.light_chain}"
             )
@@ -438,6 +440,17 @@ def main(args):
     if args.num_seq_per_target >= 1:
         log.info(
             f"Will sample {args.num_seq_per_target} sequences from {len(pdbs_csv.values)} PDBs at temperature(s) {args.sampling_temp} and regions: {args.regions_to_mutate}"
+        )
+
+    # IMGT renumber antibody chains, so region masks read off correct positions
+    if args.number_with_anarcii:
+        pdbs_csv, pdb_dir = renumber_pdbs(
+            pdbs_csv,
+            pdb_dir,
+            out_dir=f"{args.out_dir}/imgt_numbered",
+            nanobody_mode=args.nanobody_mode,
+            chains_specified=args.chains_specified,
+            device=args.device,
         )
 
     # Load AntiFold or ESM-IF1 model
