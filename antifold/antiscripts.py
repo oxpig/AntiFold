@@ -709,12 +709,7 @@ def _parse_positions(ranges, region):
 
 
 def parse_regions(imgt_regions):
-    """['CDRH3', 'L:66-70'] -> {'H': {105..117}, 'L': {66..70}}
-
-    A region name and an H:/L: position range are the same thing - a chain plus a
-    set of IMGT positions - so both parse into one representation. IMGT_dict holds
-    the positions of every region name, including the chain-agnostic aliases.
-    """
+    """['CDRH3', 'L:66-70'] -> {'H': {105..117}, 'L': {66..70}}"""
 
     selected = {"H": set(), "L": set()}
 
