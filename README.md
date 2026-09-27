@@ -34,7 +34,7 @@ To try AntiFold without installing it, please see our OPIG webserver:
 
 #### Download and install from Github source (recommended - latest release)
 ```bash
-conda create --name antifold python=3.10 -y && conda activate antifold
+conda create --name antifold python=3.13 -y && conda activate antifold
 git clone https://github.com/oxpig/AntiFold && cd AntiFold
 pip install .
 ```

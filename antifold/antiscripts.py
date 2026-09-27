@@ -826,7 +826,7 @@ def get_dfs_H(df):
 
 def get_df_seq(df):
     """Get PDB sequence"""
-    return df["pdb_res"].values
+    return df["pdb_res"].to_numpy(copy=True)
 
 
 def get_df_seq_pred(df):
