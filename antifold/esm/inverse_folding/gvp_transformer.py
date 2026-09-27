@@ -8,7 +8,6 @@ from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
-from scipy.spatial import transform
 from torch import Tensor, nn
 
 from antifold.esm.data import Alphabet

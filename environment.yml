@@ -2,11 +2,7 @@ name: antifold
 channels:
   - pytorch
   - nvidia
-  - pyg
 dependencies:
-  - python=3.10
+  - python=3.13
   - pytorch
-  - torchvision
-  - torchaudio
   - pytorch-cuda=12.1
-  - pytorch-scatter

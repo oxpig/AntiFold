@@ -22,7 +22,7 @@ To try AntiFold without installing it, please see our OPIG webserver:
 - Sampling of residues from specified IMGT regions. Nb: assumes antibody is IMGT numbered! (See --num_seq_per_target and --regions)
 - Supports use of AntiFold fine-tuned weights and ESM-IF1 pre-trained weights (See --esm_if1_mode)
 - Extraction of per-residue inverse-folding embeddings (See --extract_embeddings)
-- GPU and MacBook GPU (MPS) accelerated predictions
+- GPU accelerated predictions (See --device)
 
 ## Input
 - Input should be either a paired variable domain structure (VH/VL) antibody or nanobody (VHH) (--nanobody_mode)
@@ -34,8 +34,7 @@ To try AntiFold without installing it, please see our OPIG webserver:
 
 #### Download and install from Github source (recommended - latest release)
 ```bash
-conda create --name antifold python=3.10 -y && conda activate antifold
-conda install -c conda-forge pytorch==2.2
+conda create --name antifold python=3.13 -y && conda activate antifold
 git clone https://github.com/oxpig/AntiFold && cd AntiFold
 pip install .
 ```
@@ -239,6 +238,7 @@ options:
   --model_path MODEL_PATH
                         Alternative model weights (default models/model.pt). See --esm_if1_mode flag to use ESM-IF1 weights instead of AntiFold
   --esm_if1_mode        Use ESM-IF1 weights instead of AntiFold
+  --device DEVICE       Device to run on: cpu, cuda or mps (default: cuda if available, else cpu)
   --verbose VERBOSE     Verbose printing
 ```
 

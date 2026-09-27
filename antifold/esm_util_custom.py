@@ -14,7 +14,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from biotite.sequence import ProteinSequence
-from biotite.structure import filter_backbone, get_chains
+from biotite.structure import filter_peptide_backbone, get_chains
 from biotite.structure.io import pdb, pdbx
 from biotite.structure.residues import get_residues
 
@@ -35,7 +35,7 @@ def load_structure_fast(fpath, chain=None):
     else:
         raise Exception
 
-    bbmask = filter_backbone(structure_full)
+    bbmask = filter_peptide_backbone(structure_full)
     structure = structure_full[bbmask]
 
     all_chains = get_chains(structure)
@@ -75,13 +75,13 @@ def load_structure(fpath, chain=None):
     """
     if fpath.endswith("cif"):
         with open(fpath) as fin:
-            pdbxf = pdbx.PDBxFile.read(fin)
-        structure = pdbx.get_structure(pdbxf, model=1)
+            ciff = pdbx.CIFFile.read(fin)
+        structure = pdbx.get_structure(ciff, model=1)
     elif fpath.endswith("pdb"):
         with open(fpath) as fin:
             pdbf = pdb.PDBFile.read(fin)
         structure = pdb.get_structure(pdbf, model=1)
-    bbmask = filter_backbone(structure)
+    bbmask = filter_peptide_backbone(structure)
     structure = structure[bbmask]
     all_chains = get_chains(structure)
     if len(all_chains) == 0:

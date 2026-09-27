@@ -1,7 +1,6 @@
-torch_geometric==2.4.0
-torch==2.2
-biopython==1.83
-biotite==0.38
-pygam==0.9.*
-numpy==1.26.*
-pandas==2.*
+torch_geometric>=2.4
+torch>=2.3
+biopython>=1.80
+biotite>=1.0
+numpy>=1.26
+pandas>=2.0

@@ -37,6 +37,9 @@ ANTIFOLD_WEIGHTS_URLS = [
 ]
 ANTIFOLD_WEIGHTS_SHA256 = "d5c442fa0372c28f4d0026d2f551b6f8ba7e7a127cb6837813a88093ed233e9e"
 
+# MPS (Apple GPU) is opt-in via --device mps, as batched predictions on MPS are unreliable
+DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
 IMGT_dict = {
     "all": range(1, 128 + 1),
     "allH": range(1, 128 + 1),
@@ -122,16 +125,7 @@ def load_IF1_checkpoint(model, checkpoint_path: str = ""):
     # Load
     log.debug(f"Loading AntiFold model {checkpoint_path} ...")
 
-    # Check for CPU/GPU load
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Use MacBook Pro GPU if available
-    try:
-        device = "mps" if torch.backends.mps.is_available() else device
-    except:
-        pass
-
-    checkpoint_dict = torch.load(checkpoint_path, map_location=torch.device(device))
+    checkpoint_dict = torch.load(checkpoint_path, map_location="cpu")
 
     # PYL checkpoint ?
     if "model_state_dict" in checkpoint_dict.keys():
@@ -175,7 +169,7 @@ def download_antifold_weights(weights_path: str):
     )
 
 
-def load_model(checkpoint_path: str = ANTIFOLD_WEIGHTS_PATH):
+def load_model(checkpoint_path: str = ANTIFOLD_WEIGHTS_PATH, device: str = DEFAULT_DEVICE):
     """Load raw/FT IF1 model"""
 
     # Download IF1 weights
@@ -199,15 +193,6 @@ def load_model(checkpoint_path: str = ANTIFOLD_WEIGHTS_PATH):
     # Evaluation mode when predicting
     model = model.eval()
 
-    # Send to CPU/GPU
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Use MacBook Pro GPU if available
-    try:
-        device = "mps" if torch.backends.mps.is_available() else device
-    except:
-        pass
-    
     _ = model.to(device)
     log.info(f"Loaded model to {device}.")
 
@@ -328,15 +313,11 @@ def dataset_dataloader_to_predictions_list(
         # Test forward
         with torch.no_grad():
 
-            try:
-                device = "mps" if torch.backends.mps.is_available() else device
-                coords = coords.to(device)
-                padding_mask = padding_mask.to(device)
-                confidence = confidence.to(device)
-                model = model.to(device)
-                tokens = tokens.to(device)
-            except:
-                pass
+            device = next(model.parameters()).device
+            coords = coords.to(device)
+            padding_mask = padding_mask.to(device)
+            confidence = confidence.to(device)
+            tokens = tokens.to(device)
 
             prev_output_tokens = tokens[:, :-1]
             logits, extra = model.forward(  # bs x 35 x seq_len, exlude bos, eos
@@ -845,7 +826,7 @@ def get_dfs_H(df):
 
 def get_df_seq(df):
     """Get PDB sequence"""
-    return df["pdb_res"].values
+    return df["pdb_res"].to_numpy(copy=True)
 
 
 def get_df_seq_pred(df):
@@ -903,7 +884,6 @@ def sample_from_df_logits_HL(
         sampling_temp = [sampling_temp]
 
     if not nanobody_mode:
-        print("inside")
         for t in sampling_temp:
             # Sample sequences n times
             for n in range(sample_n):

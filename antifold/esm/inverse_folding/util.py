@@ -14,11 +14,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data as data
 from biotite.sequence import ProteinSequence
-from biotite.structure import filter_backbone, get_chains
+from biotite.structure import filter_peptide_backbone, get_chains
 from biotite.structure.io import pdb, pdbx
 from biotite.structure.residues import get_residues
-from scipy.spatial import transform
-from scipy.stats import special_ortho_group
 
 from antifold.esm.data import BatchConverter
 
@@ -33,13 +31,13 @@ def load_structure(fpath, chain=None):
     """
     if fpath.endswith("cif"):
         with open(fpath) as fin:
-            pdbxf = pdbx.PDBxFile.read(fin)
-        structure = pdbx.get_structure(pdbxf, model=1)
+            ciff = pdbx.CIFFile.read(fin)
+        structure = pdbx.get_structure(ciff, model=1)
     elif fpath.endswith("pdb"):
         with open(fpath) as fin:
             pdbf = pdb.PDBFile.read(fin)
         structure = pdb.get_structure(pdbf, model=1)
-    bbmask = filter_backbone(structure)
+    bbmask = filter_peptide_backbone(structure)
     structure = structure[bbmask]
     all_chains = get_chains(structure)
     if len(all_chains) == 0:
