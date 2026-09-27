@@ -17,8 +17,8 @@ CHAIN_COLUMNS = ("Hchain", "Lchain")
 HEAVY_TYPE = "H"
 LIGHT_TYPES = ("K", "L")
 
-ANARCII_MISSING = (
-    "ANARCII is needed to IMGT renumber chains: pip install anarcii\n"
+RENUMBERING_UNAVAILABLE = (
+    "IMGT renumbering needs anarcii and gemmi ({error}): pip install anarcii gemmi\n"
     "Or re-run with --number_with_anarcii false to use the input numbering as-is"
 )
 
@@ -107,7 +107,7 @@ def renumber_pdbs(
     are corrected. Antigen and other chains are written out untouched.
     """
 
-    # Imported here so ANARCII (and its gemmi dependency) stay optional
+    # Imported here so anarcii and gemmi stay optional
     try:
         import gemmi
         import torch
@@ -115,7 +115,7 @@ def renumber_pdbs(
         from anarcii.input_data_processing import polymer_seq
         from anarcii.pipeline import numbered_sequence_qa, renumber_pdbx
     except ImportError as e:
-        raise ImportError(ANARCII_MISSING) from e
+        raise ImportError(RENUMBERING_UNAVAILABLE.format(error=e)) from e
 
     os.makedirs(out_dir, exist_ok=True)
 
