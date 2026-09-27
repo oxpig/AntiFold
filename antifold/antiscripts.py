@@ -82,29 +82,10 @@ IMGT_dict = {
 }
 
 # Positions must name a chain, since IMGT numbering repeats across heavy and light
-CHAIN_POSITION_REGEX = re.compile(r"^[HL]:\d+(-\d+)?(,\d+(-\d+)?)*$")
+CHAIN_POSITIONS = re.compile(r"^([HL]):(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$")
 
-# The regions assigned to each residue as assumed_region, and the --regions names
-# selecting them. Chain-agnostic names (CDR1, all) select both heavy and light.
-ASSUMED_REGIONS = [
-    "CDRH1", "CDRH2", "CDRH3", "FWH1", "FWH2", "FWH3", "FWH4",
-    "CDRL1", "CDRL2", "CDRL3", "FWL1", "FWL2", "FWL3", "FWL4",
-]
-
-REGION_TO_ASSUMED = {region: [region] for region in ASSUMED_REGIONS}
-REGION_TO_ASSUMED.update(
-    {
-        "all": ASSUMED_REGIONS,
-        "allH": [r for r in ASSUMED_REGIONS if "H" in r],
-        "allL": [r for r in ASSUMED_REGIONS if "L" in r],
-        "CDRH": [r for r in ASSUMED_REGIONS if r.startswith("CDRH")],
-        "CDRL": [r for r in ASSUMED_REGIONS if r.startswith("CDRL")],
-        "FWH": [r for r in ASSUMED_REGIONS if r.startswith("FWH")],
-        "FWL": [r for r in ASSUMED_REGIONS if r.startswith("FWL")],
-        **{f"CDR{i}": [f"CDRH{i}", f"CDRL{i}"] for i in (1, 2, 3)},
-        **{f"FW{i}": [f"FWH{i}", f"FWL{i}"] for i in (1, 2, 3, 4)},
-    }
-)
+# The variable domain AntiFold models, and the only positions assumed_region covers
+IMGT_POSITIONS = range(1, 128 + 1)
 
 
 def extract_chains_biotite(pdb_file):
@@ -274,10 +255,8 @@ def get_dataset_dataloader(
 ):
     """Prepares dataset/dataoader from CSV file containing PDB paths and H/L chains"""
 
-    # Set number of threads & workers
-    if num_threads >= 1:
-        torch.set_num_threads(num_threads)
-        num_threads = min(num_threads, 4)
+    # Torch thread count is set once in main; cap dataloader workers
+    num_workers = min(num_threads, 4)
 
     # Load PDB coordinates
     dataset = InverseData(
@@ -292,7 +271,7 @@ def get_dataset_dataloader(
         batch_size=batch_size,
         shuffle=False,
         collate_fn=CoordBatchConverter_mask_gpu(alphabet),
-        num_workers=num_threads,
+        num_workers=num_workers,
     )
 
     return dataset, dataloader
@@ -580,11 +559,8 @@ def sample_new_sequences_CDR_HL(
 ):
     """Samples new sequences only varying at H/L CDRs"""
 
-    def _sample_cdr_seq(df, imgt_regions, t=0.20):
+    def _sample_cdr_seq(df, region_mask, t=0.20):
         """DF to sampled seq"""
-
-        # CDR1+2+3 mask
-        region_mask = get_imgt_mask(df, imgt_regions)
 
         # Probabilities after scaling with temp
         probs = get_temp_probs(df, t=t)
@@ -602,18 +578,16 @@ def sample_new_sequences_CDR_HL(
     # Get H, sampling only for (CDR1, 2, 3)
     H_sampled = get_df_seq(df_H)
 
-    regions = [region for region in imgt_regions if "L" not in region]
-    if len(regions) > 0:
-        region_mask = get_imgt_mask(df_H, regions)
-        H_sampled[region_mask] = _sample_cdr_seq(df_H, regions, t=t)
+    region_mask = get_imgt_mask(df_H, imgt_regions)
+    if region_mask.any():
+        H_sampled[region_mask] = _sample_cdr_seq(df_H, region_mask, t=t)
 
     # Get L, sampling only for (CDR1, 2, 3)
     L_sampled = get_df_seq(df_L)
 
-    regions = [region for region in imgt_regions if "H" not in region]
-    if len(regions) > 0:
-        region_mask = get_imgt_mask(df_L, regions)
-        L_sampled[region_mask] = _sample_cdr_seq(df_L, regions, t=t)
+    region_mask = get_imgt_mask(df_L, imgt_regions)
+    if region_mask.any():
+        L_sampled[region_mask] = _sample_cdr_seq(df_L, region_mask, t=t)
 
     # Use for later
     sampled_seq = np.concatenate([H_sampled, L_sampled])
@@ -652,11 +626,8 @@ def sample_new_sequences_CDR_H(
 ):
     """Samples new sequences only varying at H/L CDRs"""
 
-    def _sample_cdr_seq(df, imgt_regions, t=0.20):
+    def _sample_cdr_seq(df, region_mask, t=0.20):
         """DF to sampled seq"""
-
-        # CDR1+2+3 mask
-        region_mask = get_imgt_mask(df, imgt_regions)
 
         # Probabilities after scaling with temp
         probs = get_temp_probs(df, t=t)
@@ -674,10 +645,9 @@ def sample_new_sequences_CDR_H(
     # Get H, sampling only for (CDR1, 2, 3)
     H_sampled = get_df_seq(df_H)
 
-    regions = [region for region in imgt_regions if "L" not in region]
-    if len(regions) > 0:
-        region_mask = get_imgt_mask(df_H, regions)
-        H_sampled[region_mask] = _sample_cdr_seq(df_H, regions, t=t)
+    region_mask = get_imgt_mask(df_H, imgt_regions)
+    if region_mask.any():
+        H_sampled[region_mask] = _sample_cdr_seq(df_H, region_mask, t=t)
 
     # Use for later
     sampled_seq = H_sampled
@@ -712,12 +682,10 @@ def pdb_posins_to_pos(pdb_posins):
     return pdb_posins.astype(str).str.extract(r"(\d+)")[0].astype(int).values
 
 
-def parse_chain_positions(region):
-    """'H:10-12,15' -> ('H', [10, 11, 12, 15])"""
+def _parse_positions(ranges, region):
+    """'10-12,15' -> {10, 11, 12, 15}"""
 
-    chain, _, ranges = region.partition(":")
-
-    positions = []
+    positions = set()
     for part in ranges.split(","):
         first, _, last = part.partition("-")
         first, last = int(first), int(last or first)
@@ -727,31 +695,61 @@ def parse_chain_positions(region):
                 f"Invalid --regions range '{part}' in '{region}': end position before start"
             )
 
-        positions.extend(range(first, last + 1))
+        positions |= set(range(first, last + 1))
 
-    return chain, positions
+    outside = sorted(positions - set(IMGT_POSITIONS))
+    if outside:
+        raise ValueError(
+            f"--regions '{region}' asks for IMGT positions {outside} outside the "
+            f"variable domain ({IMGT_POSITIONS[0]}-{IMGT_POSITIONS[-1]}), "
+            f"which AntiFold does not model"
+        )
+
+    return positions
+
+
+def parse_regions(imgt_regions):
+    """['CDRH3', 'L:66-70'] -> {'H': {105..117}, 'L': {66..70}}
+
+    A region name and an H:/L: position range are the same thing - a chain plus a
+    set of IMGT positions - so both parse into one representation. IMGT_dict holds
+    the positions of every region name, including the chain-agnostic aliases.
+    """
+
+    selected = {"H": set(), "L": set()}
+
+    for region in imgt_regions:
+        match = CHAIN_POSITIONS.match(region)
+        if match:
+            chains, positions = match[1], _parse_positions(match[2], region)
+        elif region in IMGT_dict:
+            chains = "H" if "H" in region else "L" if "L" in region else "HL"
+            positions = set(IMGT_dict[region])
+        else:
+            raise ValueError(
+                f"Invalid --regions entry '{region}'. Choose an IMGT region name "
+                f"({', '.join(IMGT_dict)}) or chain-prefixed IMGT positions, "
+                f"e.g. H:111, L:66-70 or H:10-12,15"
+            )
+
+        for chain in chains:
+            selected[chain] |= positions
+
+    return selected
 
 
 def get_imgt_mask(df, imgt_regions=["CDR1", "CDR2", "CDR3"]):
     """Returns e.g. CDR1+2+3 mask"""
 
-    chosen_regions = []
-    chosen_positions = []
-    for region in imgt_regions:
-        if CHAIN_POSITION_REGEX.match(region):
-            chosen_positions.append(parse_chain_positions(region))
-        else:
-            chosen_regions.extend(REGION_TO_ASSUMED[region])
-
-    region_mask = df["assumed_region"].isin(chosen_regions).values
+    mask = np.zeros(len(df), dtype=bool)
 
     # assumed_region (CDRH1, FWL2 ...) carries the chain, so positions stay
     # chain-specific whether df holds the heavy chain, the light chain or both
-    for chain, positions in chosen_positions:
-        chain_mask = df["assumed_region"].str.contains(chain, regex=False).values
-        region_mask = region_mask | (chain_mask & df["pdb_pos"].isin(positions).values)
+    for chain, positions in parse_regions(imgt_regions).items():
+        on_chain = df["assumed_region"].str.contains(chain, regex=False).values
+        mask |= on_chain & df["pdb_pos"].isin(positions).values
 
-    return region_mask
+    return mask
 
 
 def get_df_logits(df):
@@ -804,11 +802,11 @@ def get_df_seqs_H(df):
     return get_df_seq(df_H)
 
 
-def format_mutations(seq_orig, seq_mut, chain):
-    """['H:G8R', 'H:P116S'] from original and mutated chain sequence"""
+def format_mutations(df_chain, seq_orig, seq_mut, chain):
+    """['H:Y107A', 'H:S110T'] at IMGT positions, insertion codes included"""
     return [
-        f"{chain}:{orig}{i+1}{mut}"
-        for i, (orig, mut) in enumerate(zip(seq_orig, seq_mut))
+        f"{chain}:{orig}{posins}{mut}"
+        for posins, orig, mut in zip(df_chain["pdb_posins"], seq_orig, seq_mut)
         if orig != mut
     ]
 
@@ -828,6 +826,14 @@ def sample_from_df_logits_HL(
     # Only sampling from heavy, light chains
     df_logits_HL = df_logits.iloc[:len(H_orig) + len(L_orig), :]
     df_logits_HL.name = df_logits.name
+    df_H, df_L = get_dfs_HL(df_logits_HL)
+
+    if not get_imgt_mask(df_logits_HL, regions_to_mutate).any():
+        raise ValueError(
+            f"{df_logits_HL.name}: --regions {' '.join(regions_to_mutate)} selects no "
+            f"positions in this structure. Check the chain prefixes match the chains "
+            f"being run"
+        )
 
     # Stats
     seq = "".join(H_orig) + "".join(L_orig)
@@ -866,8 +872,8 @@ def sample_from_df_logits_HL(
         seq_orig = "".join(H_orig) + "".join(L_orig)
 
         # Sequence recovery and mismatches
-        mutations = format_mutations(H_orig, H_mut, "H") + format_mutations(
-            L_orig, L_mut, "L"
+        mutations = format_mutations(df_H, H_orig, H_mut, "H") + format_mutations(
+            df_L, L_orig, L_mut, "L"
         )
         seq_recovery = 1 - len(mutations) / len(seq_orig)
 
@@ -901,9 +907,17 @@ def sample_from_df_logits_H(
     # Get original H/L sequence
     H_orig = get_df_seqs_H(df_logits)
 
-    # Only sampling from heavy, light chains
+    # Only sampling from the heavy chain
     df_logits_H = df_logits.iloc[:len(H_orig), :]
     df_logits_H.name = df_logits.name
+    df_H = get_dfs_H(df_logits_H)
+
+    if not get_imgt_mask(df_logits_H, regions_to_mutate).any():
+        raise ValueError(
+            f"{df_logits_H.name}: --regions {' '.join(regions_to_mutate)} selects no "
+            f"positions in this structure. Check the chain prefixes match the chains "
+            f"being run (a single heavy chain has no L: positions)"
+        )
 
     # Stats
     seq = "".join(H_orig)
@@ -942,7 +956,7 @@ def sample_from_df_logits_H(
         seq_orig = "".join(H_orig)
 
         # Sequence recovery and mismatches
-        mutations = format_mutations(H_orig, H_mut, "H")
+        mutations = format_mutations(df_H, H_orig, H_mut, "H")
         seq_recovery = 1 - len(mutations) / len(seq_orig)
 
         seq_mut = "".join(H_mut)
