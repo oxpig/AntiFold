@@ -43,14 +43,14 @@ def _get_chain(structure, chain, pdb_path):
     return found
 
 
-def _chain_type(pdb, chain, result, qa_passed):
+def _chain_type(chain, result, qa_passed):
     """ANARCII chain type, raising unless it is an antibody heavy or light chain"""
 
     if result["chain_type"] in (HEAVY_TYPE, *LIGHT_TYPES) and qa_passed:
         return result["chain_type"]
 
     raise UnusableChains(
-        f"{pdb} chain {chain} is not an antibody heavy or light chain: ANARCII "
+        f"chain {chain} is not an antibody heavy or light chain: ANARCII "
         f"reports chain type {result['chain_type']}, score {result['score']:.1f}"
         f"{', ' + result['error'] if result['error'] else ''}\n"
         f"Specify the antibody chains with --heavy_chain/--light_chain, or re-run "
@@ -58,7 +58,7 @@ def _chain_type(pdb, chain, result, qa_passed):
     )
 
 
-def _antibody_chain_types(pdb, numbered, qa):
+def _antibody_chain_types(numbered, qa):
     """ANARCII chain types of the antibody chains only; others are antigen/context"""
 
     chain_types = {
@@ -75,7 +75,7 @@ def _antibody_chain_types(pdb, numbered, qa):
     return chain_types
 
 
-def _assign_chains(pdb, chain_types):
+def _assign_chains(chain_types):
     """Maps Hchain/Lchain to chain IDs by ANARCII chain type"""
 
     assigned = {}
@@ -85,14 +85,14 @@ def _assign_chains(pdb, chain_types):
         if col in assigned:
             name = "heavy" if col == "Hchain" else "light"
             raise UnusableChains(
-                f"{pdb}: chains {assigned[col]} and {chain} are both {name} chains. "
+                f"chains {assigned[col]} and {chain} are both {name} chains. "
                 f"AntiFold runs one heavy chain, optionally paired with one light chain"
             )
         assigned[col] = chain
 
     if "Hchain" not in assigned:
         raise UnusableChains(
-            f"{pdb}: no heavy chain among {sorted(chain_types)}. AntiFold requires "
+            f"no heavy chain among {sorted(chain_types)}. AntiFold requires "
             f"a heavy (or nanobody) chain"
         )
 
@@ -104,14 +104,14 @@ def _format_chains(chains):
     return ", ".join(f"{col}={chain}" for col, chain in sorted(chains.items()))
 
 
-def _check_agreement(pdb, candidates, assigned):
+def _check_agreement(candidates, assigned):
     """Raises unless ANARCII agrees with the heavy/light chains the user gave"""
 
     if assigned == candidates:
         return
 
     raise UnusableChains(
-        f"{pdb}: ANARCII disagrees with the chains given "
+        f"ANARCII disagrees with the chains given "
         f"({_format_chains(candidates)}): it reads them as "
         f"{_format_chains(assigned)}. Correct the chains, or re-run with "
         f"--number_with_anarcii false to use them as given"
@@ -181,7 +181,7 @@ def renumber_pdbs(
                     }
                 )
                 chain_types = {
-                    chain: _chain_type(_pdb, chain, result, numbered_sequence_qa(result))
+                    chain: _chain_type(chain, result, numbered_sequence_qa(result))
                     for chain, result in numbered.items()
                 }
             else:
@@ -189,12 +189,12 @@ def renumber_pdbs(
                 candidates = None
                 polymers = {ch.name: polymer_seq(ch) for ch in structure[0]}
                 numbered = model.number({c: s for c, s in polymers.items() if s})
-                chain_types = _antibody_chain_types(_pdb, numbered, numbered_sequence_qa)
+                chain_types = _antibody_chain_types(numbered, numbered_sequence_qa)
 
-            assigned = _assign_chains(_pdb, chain_types)
+            assigned = _assign_chains(chain_types)
 
             if chains_specified:
-                _check_agreement(_pdb, candidates, assigned)
+                _check_agreement(candidates, assigned)
             else:
                 if "Lchain" not in assigned and not custom_chain_mode:
                     raise UnusableChains(
