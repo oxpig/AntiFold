@@ -21,7 +21,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 import antifold.esm
 from antifold.esm.inverse_folding.util import load_structure
-from antifold.esm_util_custom import CoordBatchConverter_mask_gpu
+from antifold.esm_util_custom import CoordBatchConverter_mask_gpu, xpu_available
 from antifold.if1_dataset import InverseData
 
 log = logging.getLogger(__name__)
@@ -38,7 +38,9 @@ ANTIFOLD_WEIGHTS_URLS = [
 ANTIFOLD_WEIGHTS_SHA256 = "d5c442fa0372c28f4d0026d2f551b6f8ba7e7a127cb6837813a88093ed233e9e"
 
 # MPS (Apple GPU) is opt-in via --device mps, as batched predictions on MPS are unreliable
-DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEFAULT_DEVICE = (
+    "cuda" if torch.cuda.is_available() else "xpu" if xpu_available() else "cpu"
+)
 
 IMGT_dict = {
     "all": range(1, 128 + 1),
@@ -249,12 +251,22 @@ def logits_to_seqprobs_list(logits, tokens):
 
 
 def get_dataset_dataloader(
-    pdbs_csv_or_dataframe, pdb_dir, batch_size, custom_chain_mode=False, num_threads=0
+    pdbs_csv_or_dataframe,
+    pdb_dir,
+    batch_size,
+    custom_chain_mode=False,
+    num_threads=0,
+    device=None,
 ):
     """Prepares dataset/dataoader from CSV file containing PDB paths and H/L chains"""
 
     # Torch thread count is set once in main; cap dataloader workers
     num_workers = min(num_threads, 4)
+    # Collate eagerly moves tensors to the accelerator (see CoordBatchConverter_mask_gpu);
+    # forked worker processes can't re-init an already-initialized CUDA/XPU context
+    # ("Cannot re-initialize CUDA in forked subprocess"), so keep collate in the main process.
+    if device is not None and torch.device(device).type in {"cuda", "xpu"}:
+        num_workers = 0
 
     # Load PDB coordinates
     dataset = InverseData(
@@ -475,9 +487,12 @@ def seed_everything(seed: int):
     os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = True
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = True
+    if xpu_available():
+        torch.xpu.manual_seed(seed)
 
 
 def get_pdbs_logits(
@@ -508,6 +523,7 @@ def get_pdbs_logits(
         batch_size=batch_size,
         custom_chain_mode=custom_chain_mode,
         num_threads=num_threads,
+        device=next(model.parameters()).device,
     )
 
     # Predict PDBs -> df_logits
