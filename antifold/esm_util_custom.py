@@ -19,6 +19,21 @@ from biotite.structure.io import pdb, pdbx
 from biotite.structure.residues import get_residues
 
 
+def xpu_available():
+    # hasattr guard: older torch builds don't expose torch.xpu at all
+    return hasattr(torch, "xpu") and torch.xpu.is_available()
+
+
+def _accelerator_device():
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if xpu_available():
+        return torch.device("xpu")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
 def load_structure_fast(fpath, chain=None):
     """
     Args:
@@ -353,12 +368,9 @@ class CoordBatchConverter_mask_gpu(BatchConverter):
         res_pos = self.batch_convert_vals(pos_list)
         targets = self.batch_convert_vals(targets_list)
 
-        # check for cuda
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        if torch.backends.mps.is_available():
-            device = "mps"
+        device = _accelerator_device()
 
-        if device == torch.device("cuda"):  # MH
+        if device.type in {"cuda", "xpu"}:  # MH
             coords = coords.type(torch.float32).to(device)
             confidence = confidence.to(device)
             tokens = tokens.to(device)
@@ -371,7 +383,7 @@ class CoordBatchConverter_mask_gpu(BatchConverter):
         confidence = confidence * coord_mask + (-1.0) * padding_mask
 
         # Also padding mask #MH
-        if device == torch.device("cuda"):  # MH
+        if device.type in {"cuda", "xpu"}:  # MH
             padding_mask = padding_mask.to(device)
             coord_mask = coord_mask.to(device)
             confidence = confidence.to(device)

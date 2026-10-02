@@ -191,7 +191,7 @@ python antifold/main.py \
     p.add_argument(
         "--device",
         default=DEFAULT_DEVICE,
-        help="Device to run on: cpu, cuda or mps (default: cuda if available, else cpu)",
+        help="Device to run on: cpu, cuda, xpu or mps (default: cuda if available, else xpu if available, else cpu)",
     )
 
     p.add_argument(
