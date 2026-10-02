@@ -22,7 +22,7 @@ To try AntiFold without installing it, please see our OPIG webserver:
 - Sampling of residues from specified IMGT regions or individual IMGT positions. Nb: assumes antibody is IMGT numbered! (See --num_seq_per_target and --regions)
 - Supports use of AntiFold fine-tuned weights and ESM-IF1 pre-trained weights (See --esm_if1_mode)
 - Extraction of per-residue inverse-folding embeddings (See --extract_embeddings)
-- GPU accelerated predictions (See --device)
+- GPU accelerated predictions on CUDA, XPU and (opt-in) MPS (See --device)
 
 ## Input
 - Input should be either a paired variable domain structure (VH/VL) antibody or nanobody (VHH) (--nanobody_mode)
@@ -39,7 +39,7 @@ git clone https://github.com/oxpig/AntiFold && cd AntiFold
 pip install .
 ```
 
-GPU only: install using environment.yml
+NVIDIA GPU (CUDA) only: install using environment.yml
 
 ```bash
 conda env create -f environment.yml
@@ -48,6 +48,15 @@ python -m pip install .
 
 This installs a CUDA build of PyTorch from conda-forge matching your NVIDIA driver, and fails if no GPU driver is found.
 Detailed instructions on how to correctly install pytorch for your system can be found [here](https://pytorch.org/get-started/locally/)
+
+Intel GPUs (XPU): install a PyTorch XPU wheel, then AntiFold
+
+```bash
+python3.13 -m venv .venv
+source .venv/bin/activate
+python -m pip install --index-url https://download.pytorch.org/whl/xpu --extra-index-url https://pypi.org/simple torch
+python -m pip install .
+```
 
 #### Run AntiFold (inverse-folding probabilities, sample sequences on IMGT-numbered PDBs)
 ```bash
@@ -247,7 +256,7 @@ options:
   --model_path MODEL_PATH
                         Alternative model weights (default models/model.pt). See --esm_if1_mode flag to use ESM-IF1 weights instead of AntiFold
   --esm_if1_mode        Use ESM-IF1 weights instead of AntiFold
-  --device DEVICE       Device to run on: cpu, cuda or mps (default: cuda if available, else cpu)
+  --device DEVICE       Device to run on: cpu, cuda, xpu or mps (default: cuda if available, else xpu if available, else cpu)
   --verbose VERBOSE     Verbose printing
 ```
 
