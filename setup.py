@@ -18,6 +18,9 @@ setup(
     author_email="maghoi@dtu.dk",
     long_description=long_description,
     long_description_content_type='text/markdown',
+    entry_points={
+        "console_scripts": ["antifold=antifold.cli:main"],
+    },
     install_requires=REQUIREMENTS,
     python_requires=">=3.13",
     classifiers=[
