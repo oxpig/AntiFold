@@ -413,8 +413,8 @@ def main(args):
             pdbs_csv.loc[0, "Agchain"] = args.antigen_chain
             args.custom_chain_mode = True
 
-        # PDB dir is the directory of the PDB file
-        pdb_dir = os.path.dirname(args.pdb_file)
+        # PDB dir is the directory of the PDB file ("." for a bare file name)
+        pdb_dir = os.path.dirname(args.pdb_file) or "."
 
     # Option 2: PDB dir and CSV file
     elif args.pdb_dir and args.pdbs_csv:
